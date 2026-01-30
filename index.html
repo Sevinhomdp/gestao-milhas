@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Milhas Pro 5.0 | Cloud Sync</title>
+    <style>
+        :root { 
+            --primary: #0f172a; --accent: #d4af37; --bg: #f8fafc; --white: #ffffff; 
+            --success: #16a34a; --danger: #dc2626; --warning: #f59e0b; --gray: #64748b; --border: #e2e8f0; 
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { background: var(--bg); display: flex; height: 100vh; color: #1e293b; overflow: hidden; flex-direction: column; }
+
+        /* Header Mobile */
+        .mobile-header { display: none; background: var(--primary); color: white; padding: 15px; justify-content: space-between; align-items: center; z-index: 100; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--primary); color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; transition: 0.3s; }
+        .brand { font-size: 22px; font-weight: bold; margin-bottom: 30px; color: var(--accent); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;}
+        .menu-btn { background: none; border: none; color: #94a3b8; text-align: left; padding: 14px 15px; cursor: pointer; font-size: 15px; width: 100%; border-radius: 8px; margin-bottom: 5px; transition: 0.2s; }
+        .menu-btn:hover, .menu-btn.active { background: rgba(255,255,255,0.1); color: white; border-left: 4px solid var(--accent); }
+
+        /* Main Content */
+        .layout-container { display: flex; flex: 1; overflow: hidden; }
+        .content { flex: 1; padding: 25px; overflow-y: auto; position: relative; }
+        .view-title { margin-bottom: 25px; font-size: 22px; font-weight: 800; color: var(--primary); }
+        
+        /* Cards */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid var(--primary); }
+        .card h3 { font-size: 11px; color: var(--gray); text-transform: uppercase; margin-bottom: 5px; }
+        .card .value { font-size: 22px; font-weight: 700; }
+
+        /* Formulários */
+        .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        label { font-size: 12px; font-weight: 600; color: var(--gray); margin-bottom: 4px; display: block; }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; }
+
+        /* Botões */
+        .btn { padding: 14px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; font-size: 15px; }
+        .btn-p { background: var(--primary); color: white; }
+        .btn-s { background: var(--success); color: white; }
+        .btn-d { background: var(--danger); color: white; padding: 8px; font-size: 12px; }
+
+        /* Tabelas Responsivas */
+        .table-wrapper { background: white; border-radius: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 12px; color: var(--gray); }
+        td { padding: 12px; font-size: 14px; border-bottom: 1px solid var(--border); }
+
+        /* Sincronização Indicator */
+        #sync-status { position: fixed; bottom: 10px; right: 10px; font-size: 10px; padding: 5px 10px; border-radius: 20px; background: #eee; z-index: 200; }
+
+        /* RESPONSIVIDADE CELULAR */
+        @media (max-width: 768px) {
+            .mobile-header { display: flex; }
+            .sidebar { 
+                position: fixed; left: -260px; top: 58px; bottom: 0; z-index: 99; 
+                box-shadow: 10px 0 15px rgba(0,0,0,0.1);
+            }
+            .sidebar.active { left: 0; }
+            .content { padding: 15px; }
+            .view-title { font-size: 18px; }
+            .grid-form { grid-template-columns: 1fr; }
+            .cards { grid-template-columns: 1fr 1fr; }
+            .card .value { font-size: 18px; }
+            input, select, .btn { font-size: 16px; } /* Evita zoom no iPhone */
+        }
+
+        .hidden { display: none; }
+        .sync-loading { color: var(--warning); }
+        .sync-ok { color: var(--success); }
+    </style>
+</head>
+<body>
+
+    <header class="mobile-header">
+        <div style="font-weight:bold; color:var(--accent)">✈ MILHAS PRO</div>
+        <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:24px;">☰</button>
+    </header>
+
+    <div class="layout-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">✈ MILHAS PRO 5.0</div>
+            <nav>
+                <button class="menu-btn active" onclick="navegar('dashboard')">📊 Dashboard</button>
+                <button class="menu-btn" onclick="navegar('saldos')">💰 Saldos</button>
+                <button class="menu-btn" onclick="navegar('simulador')">🧮 Simulador</button>
+                <button class="menu-btn" onclick="navegar('operacoes')">📝 Operações</button>
+                <button class="menu-btn" onclick="navegar('cartoes')">💳 Cartões</button>
+            </nav>
+            <div style="margin-top:auto; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1);">
+                <button class="menu-btn" onclick="salvar()">☁ Sincronizar Agora</button>
+                <button class="menu-btn" onclick="exportar()">💾 Backup Manual</button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div id="sync-status">Iniciando...</div>
+
+            <section id="dashboard" class="view">
+                <div class="view-title">Dashboard</div>
+                <div class="cards">
+                    <div class="card" style="border-left-color: var(--success)"><h3>Lucro</h3><div class="value" id="d-lucro">R$ 0,00</div></div>
+                    <div class="card" style="border-left-color: var(--warning)"><h3>Faturas</h3><div class="value" id="d-giro">R$ 0,00</div></div>
+                </div>
+                <div class="panel">
+                    <h4 style="margin-bottom:10px; font-size:14px">Vencimentos Próximos</h4>
+                    <div class="table-wrapper"><table><thead><tr><th>Cartão</th><th>Venc.</th><th>Valor</th></tr></thead><tbody id="faturas-body"></tbody></table></div>
+                </div>
+            </section>
+
+            <section id="saldos" class="view hidden">
+                <div class="view-title">Minha Carteira</div>
+                <div class="grid-form" id="saldos-container"></div>
+            </section>
+
+            <section id="simulador" class="view hidden">
+                <div class="view-title">Laboratório de Testes</div>
+            <div class="panel">
+                <div class="grid-form">
+                    <div><label>Milhas Compradas</label><input type="number" id="sim-qtd" oninput="calcSim()"></div>
+                    <div><label>Saldo Bonificável</label><input type="number" id="sim-saldo-b" oninput="calcSim()"></div>
+                    <div><label>Saldo Seco</label><input type="number" id="sim-saldo-s" oninput="calcSim()"></div>
+                    <div><label>Bônus (%)</label><input type="number" id="sim-pct" value="100" oninput="calcSim()"></div>
+                    <div><label>Custo Compra (R$)</label><input type="number" id="sim-custo" oninput="calcSim()"></div>
+                    <div><label>Taxas/Clubes (R$)</label><input type="number" id="sim-taxas" oninput="calcSim()"></div>
+                    <div style="grid-column: span 2;"><label>VALOR TOTAL DA VENDA (R$)</label><input type="number" id="sim-venda" oninput="calcSim()"></div>
+                </div>
+                <div id="sim-res" style="margin-top:20px; padding:20px; background:#f1f5f9; border-radius:8px; border-left: 5px solid var(--accent)">Aguardando dados...</div>
+            </div>
+        </section>
+
+            <section id="operacoes" class="view hidden">
+                <div class="view-title">Lançamentos</div>
+                
+                <div class="panel">
+                    <h4>Nova Operação</h4>
+                    <select id="tipo-op" onchange="toggleFormOp()" style="margin-bottom:15px; border-color:var(--accent)">
+                        <option value="compra">🛒 Compra / Entrada</option>
+                        <option value="transf">🔄 Transferência Bonificada</option>
+                        <option value="venda">💰 Venda / Saída</option>
+                    </select>
+
+                    <div id="form-compra" class="grid-form">
+                        <div><label>Programa</label><select class="prog-select" id="op-prog"></select></div>
+                        <div><label>Qtd Milhas</label><input type="number" id="op-qtd"></div>
+                        <div><label>Custo (R$)</label><input type="number" id="op-valor"></div>
+                        <div><label>Cartão</label><select class="card-select" id="op-cartao"></select></div>
+                        <div><label>Parcelas</label><input type="number" id="op-parc" value="1"></div>
+                        <div><label>Data</label><input type="date" id="op-data"></div>
+                    </div>
+
+                    <div id="form-transf" class="grid-form hidden">
+                        <div><label>Origem</label><select class="prog-select" id="tr-origem"></select></div>
+                        <div><label>Destino</label><select class="prog-select" id="tr-destino"></select></div>
+                        <div><label>Qtd Enviada</label><input type="number" id="tr-qtd"></div>
+                        <div><label>Bônus (%)</label><input type="number" id="tr-bonus" value="100"></div>
+                        <div><label>Taxa (R$)</label><input type="number" id="tr-taxa" value="0"></div>
+                        <div><label>Cartão Taxa</label><select class="card-select" id="tr-cartao"></select></div>
+                    </div>
+
+                    <div id="form-venda" class="grid-form hidden">
+                        <div><label>Programa</label><select class="prog-select" id="v-prog"></select></div>
+                        <div><label>Qtd Vendida</label><input type="number" id="v-qtd"></div>
+                        <div><label>Valor Recebido</label><input type="number" id="v-valor"></div>
+                    </div>
+
+                    <button class="btn btn-p" id="btn-executar" onclick="executarAcao()">Lançar na Planilha</button>
+                </div>
+
+                <div class="table-wrapper"><table><thead><tr><th>Data</th><th>Item</th><th>Qtd</th><th>Tipo</th></tr></thead><tbody id="hist-body"></tbody></table></div>
+            </section>
+
+        <section id="cartoes" class="view hidden">
+            <div class="view-title">Gerenciar Cartões</div>
+            <div class="panel">
+                <h4>Adicionar Novo</h4>
+                <div class="grid-form">
+                    <div><label>Nome</label><input type="text" id="c-nome"></div>
+                    <div><label>Fechamento</label><input type="number" id="c-fecha"></div>
+                    <div><label>Vencimento</label><input type="number" id="c-vence"></div>
+                    <div><label style="color:transparent">.</label><button class="btn btn-p" onclick="addCartao()">Salvar</button></div>
+                </div>
+            </div>
+            <div class="panel">
+                <h4>Cartões Salvos</h4>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Fechamento</th>
+                                <th>Vencimento</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartoes-lista-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="panel" style="background: var(--primary); color: white;">
+                <h4 style="color:var(--accent)">Calculadora C6 Black</h4>
+                <div class="grid-form">
+                    <div><label style="color:white">Gasto R$</label><input type="number" id="c6-r" oninput="calcC6()"></div>
+                    <div><label style="color:white">Dólar</label><input type="number" id="c6-d" value="5.80" oninput="calcC6()"></div>
+                    <div style="text-align:center"><small>PONTOS:</small><div id="c6-res" style="font-size:24px; font-weight:bold; color:var(--accent)">0</div></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // CONFIGURAÇÃO CLOUD - SUBSTITUA ABAIXO
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7Wy_DNj8IkENJZd5pRxq6bNYofVvTuiVFvH7Xu8PB9RwLZe17f6sjEH9nw0zsjqzeIw/exec";
+        
+        const PROGS = ["Livelo", "Esfera", "Átomos", "Smiles", "Azul", "LATAM", "Inter", "Itaú"];
+        let db = { saldos: {}, cartoes: [], parcelas: [], ops: [] };
+        PROGS.forEach(p => db.saldos[p] = 0);
+
+        async function carregarDados() {
+            setSyncStatus("Carregando nuvem...", "loading");
+            try {
+                const r = await fetch(SCRIPT_URL);
+                const cloudData = await r.json();
+                if(cloudData && cloudData.saldos) {
+                    db = cloudData;
+                    setSyncStatus("Nuvem OK", "ok");
+                }
+            } catch(e) { 
+                const local = localStorage.getItem('milhas_pro_v50');
+                if(local) db = JSON.parse(local);
+                setSyncStatus("Erro Nuvem / Offline", "error"); 
+            }
+            renderizarTudo();
+        }
+
+        async function salvar() {
+            setSyncStatus("Salvando...", "loading");
+            localStorage.setItem('milhas_pro_v50', JSON.stringify(db));
+            try {
+                await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(db) });
+                setSyncStatus("Sincronizado", "ok");
+            } catch(e) { setSyncStatus("Pendente Sinc.", "error"); }
+        }
+
+        function setSyncStatus(txt, status) {
+            const el = document.getElementById('sync-status');
+            el.innerText = txt;
+            el.className = status === 'ok' ? 'sync-ok' : (status === 'loading' ? 'sync-loading' : '');
+        }
+
+        function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
+        
+        function navegar(id) {
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            if(window.innerWidth < 768) toggleMenu();
+            renderizarTudo();
+        }
+
+        function toggleFormOp() {
+            const tipo = document.getElementById('tipo-op').value;
+            document.getElementById('form-compra').classList.add('hidden');
+            document.getElementById('form-transf').classList.add('hidden');
+            document.getElementById('form-venda').classList.add('hidden');
+            document.getElementById('form-' + tipo).classList.remove('hidden');
+        }
+
+        function renderizarTudo() {
+            // Saldos
+            const cont = document.getElementById('saldos-container');
+            cont.innerHTML = Object.keys(db.saldos).map(p => `
+                <div class="card"><h3>${p}</h3>
+                <input type="number" value="${db.saldos[p]}" onchange="db.saldos['${p}']=parseFloat(this.value);salvar();">
+                </div>`).join('');
+
+            // Selects
+            document.querySelectorAll('.prog-select').forEach(s => {
+                s.innerHTML = PROGS.map(p => `<option value="${p}">${p}</option>`).join('');
+            });
+            document.querySelectorAll('.card-select').forEach(s => {
+                s.innerHTML = db.cartoes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+            });
+
+            // Dash & Tabelas
+            const giro = db.parcelas.filter(p => !p.pago).reduce((acc, p) => acc + p.value, 0);
+            document.getElementById('d-giro').innerText = giro.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+            
+            updateHist();
+            updateCartoes();
+        }
+
+        function executarAcao() {
+            const tipo = document.getElementById('tipo-op').value;
+            if(tipo === 'compra') {
+                const prog = document.getElementById('op-prog').value;
+                const qtd = parseFloat(document.getElementById('op-qtd').value);
+                const valor = parseFloat(document.getElementById('op-valor').value);
+                const parc = parseInt(document.getElementById('op-parc').value);
+                const cartao = document.getElementById('op-cartao').value;
+                const data = document.getElementById('op-data').value;
+                
+                db.saldos[prog] += qtd;
+                db.ops.push({ data, item: prog, qtd, tipo: 'COMPRA', valor });
+                // Lógica simples de parcela
+                for(let i=0; i<parc; i++) db.parcelas.push({ cartao, value: valor/parc, pago: false });
+            } 
+            else if(tipo === 'transf') {
+                const ori = document.getElementById('tr-origem').value;
+                const des = document.getElementById('tr-destino').value;
+                const qtd = parseFloat(document.getElementById('tr-qtd').value);
+                const bon = parseFloat(document.getElementById('tr-bonus').value);
+                const taxa = parseFloat(document.getElementById('tr-taxa').value);
+                
+                db.saldos[ori] -= qtd;
+                const f = qtd * (1 + bon/100);
+                db.saldos[des] += f;
+                db.ops.push({ data: new Date().toISOString().split('T')[0], item: `${ori}->${des}`, qtd: f, tipo: 'TRANSF', valor: taxa });
+            }
+            else {
+                const prog = document.getElementById('v-prog').value;
+                const qtd = parseFloat(document.getElementById('v-qtd').value);
+                const valor = parseFloat(document.getElementById('v-valor').value);
+                db.saldos[prog] -= qtd;
+                db.ops.push({ data: new Date().toISOString().split('T')[0], item: prog, qtd, tipo: 'VENDA', valor });
+            }
+            salvar();
+            renderizarTudo();
+            alert("Sucesso!");
+        }
+
+        function updateHist() {
+            document.getElementById('hist-body').innerHTML = db.ops.map(o => `<tr><td>${o.data}</td><td>${o.item}</td><td>${o.qtd.toLocaleString()}</td><td>${o.tipo}</td></tr>`).reverse().join('');
+        }
+
+        function addCartao() {
+            const nome = document.getElementById('c-nome').value;
+            const fecha = document.getElementById('c-fecha').value;
+            const vence = document.getElementById('c-vence').value;
+            if(!nome || !fecha || !vence) return alert("Preencha todos os campos do cartão!");
+            
+            db.cartoes.push({id: Date.now(), nome, fecha, vence });
+            salvar(); 
+            renderizarTudo();
+            
+            // Limpa campos
+            document.getElementById('c-nome').value = '';
+            document.getElementById('c-fecha').value = '';
+            document.getElementById('c-vence').value = '';
+        }
+
+        function updateCartoes() {
+            const tbody = document.getElementById('cartoes-lista-body');
+            tbody.innerHTML = db.cartoes.map(c => `
+                <tr>
+                    <td>${c.nome}</td>
+                    <td>Dia ${c.fecha}</td>
+                    <td>Dia ${c.vence}</td>
+                    <td><button class="btn btn-d" onclick="removerCartao(${c.id})">Remover</button></td>
+                </tr>`).join('');
+        }
+
+        function removerCartao(id) {
+            db.cartoes = db.cartoes.filter(x => x.id !== id);
+            salvar();
+            renderizarTudo();
+        }
+
+        function calcSim() {
+            const q = (parseFloat(document.getElementById('sim-qtd').value)||0) * (1 + (parseFloat(document.getElementById('sim-pct').value)||0)/100);
+            const c = parseFloat(document.getElementById('sim-custo').value)||0;
+            const v = parseFloat(document.getElementById('sim-venda').value)||0;
+            document.getElementById('sim-res').innerHTML = `Milhas: ${q.toLocaleString()} | CPM Compra: R$ ${q>0?(c/q*1000).toFixed(2):0} | <b>Lucro: R$ ${(v-c).toFixed(2)}</b>`;
+        }
+        
+        function calcC6() {
+            const r = parseFloat(document.getElementById('c6-r').value)||0;
+            const d = parseFloat(document.getElementById('c6-d').value)||1;
+            document.getElementById('c6-res').innerText = Math.floor((r/d)*2.0).toLocaleString();
+        }
+
+        // Início
+        carregarDados();
+    </script>
+</body>
+</html>
