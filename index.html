@@ -73,6 +73,7 @@
         .hidden { display: none; }
         .sync-loading { color: var(--warning); }
         .sync-ok { color: var(--success); }
+        .sync-error { color: var(--danger); }
     </style>
 </head>
 <body>
@@ -86,11 +87,11 @@
         <aside class="sidebar" id="sidebar">
             <div class="brand">✈ MILHAS PRO 5.0</div>
             <nav>
-                <button class="menu-btn active" onclick="navegar('dashboard')">📊 Dashboard</button>
-                <button class="menu-btn" onclick="navegar('saldos')">💰 Saldos</button>
-                <button class="menu-btn" onclick="navegar('simulador')">🧮 Simulador</button>
-                <button class="menu-btn" onclick="navegar('operacoes')">📝 Operações</button>
-                <button class="menu-btn" onclick="navegar('cartoes')">💳 Cartões</button>
+                <button class="menu-btn active" onclick="navegar('dashboard', this)">📊 Dashboard</button>
+                <button class="menu-btn" onclick="navegar('saldos', this)">💰 Saldos</button>
+                <button class="menu-btn" onclick="navegar('simulador', this)">🧮 Simulador</button>
+                <button class="menu-btn" onclick="navegar('operacoes', this)">📝 Operações</button>
+                <button class="menu-btn" onclick="navegar('cartoes', this)">💳 Cartões</button>
             </nav>
             <div style="margin-top:auto; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1);">
                 <button class="menu-btn" onclick="salvar()">☁ Sincronizar Agora</button>
@@ -255,11 +256,12 @@
 
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
         
-        function navegar(id) {
+        function navegar(id, button) {
             document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
             document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
-            if(window.innerWidth < 768) toggleMenu();
+            if (button) button.classList.add('active');
+            if(window.innerWidth < 768) document.getElementById('sidebar').classList.remove('active');
             renderizarTudo();
         }
 
@@ -276,7 +278,7 @@
             const cont = document.getElementById('saldos-container');
             cont.innerHTML = Object.keys(db.saldos).map(p => `
                 <div class="card"><h3>${p}</h3>
-                <input type="number" value="${db.saldos[p]}" onchange="db.saldos['${p}']=parseFloat(this.value);salvar();">
+                <input type="number" value="${db.saldos[p]}" onchange="const v=parseFloat(this.value);db.saldos['${p}']=Number.isFinite(v)?v:0;salvar();">
                 </div>`).join('');
 
             // Selects
@@ -338,6 +340,20 @@
             document.getElementById('hist-body').innerHTML = db.ops.map(o => `<tr><td>${o.data}</td><td>${o.item}</td><td>${o.qtd.toLocaleString()}</td><td>${o.tipo}</td></tr>`).reverse().join('');
         }
 
+        function exportar() {
+            const data = JSON.stringify(db, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const ts = new Date().toISOString().split('T')[0];
+            link.href = url;
+            link.download = `milhas-pro-backup-${ts}.json`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+        
         function addCartao() {
             const nome = document.getElementById('c-nome').value;
             const fecha = document.getElementById('c-fecha').value;
@@ -372,10 +388,18 @@
         }
 
         function calcSim() {
-            const q = (parseFloat(document.getElementById('sim-qtd').value)||0) * (1 + (parseFloat(document.getElementById('sim-pct').value)||0)/100);
-            const c = parseFloat(document.getElementById('sim-custo').value)||0;
-            const v = parseFloat(document.getElementById('sim-venda').value)||0;
-            document.getElementById('sim-res').innerHTML = `Milhas: ${q.toLocaleString()} | CPM Compra: R$ ${q>0?(c/q*1000).toFixed(2):0} | <b>Lucro: R$ ${(v-c).toFixed(2)}</b>`;
+            const compradas = parseFloat(document.getElementById('sim-qtd').value) || 0;
+            const saldoB = parseFloat(document.getElementById('sim-saldo-b').value) || 0;
+            const saldoS = parseFloat(document.getElementById('sim-saldo-s').value) || 0;
+            const bonus = parseFloat(document.getElementById('sim-pct').value) || 0;
+            const custoCompra = parseFloat(document.getElementById('sim-custo').value) || 0;
+            const taxas = parseFloat(document.getElementById('sim-taxas').value) || 0;
+            const v = parseFloat(document.getElementById('sim-venda').value) || 0;
+            const totalMilhas = compradas + (saldoB * (1 + bonus / 100)) + saldoS;
+            const totalCusto = custoCompra + taxas;
+            const cpm = totalMilhas > 0 ? (totalCusto / totalMilhas * 1000).toFixed(2) : 0;
+            const lucro = (v - totalCusto).toFixed(2);
+            document.getElementById('sim-res').innerHTML = `Milhas: ${totalMilhas.toLocaleString()} | CPM Compra: R$ ${cpm} | <b>Lucro: R$ ${lucro}</b>`;
         }
         
         function calcC6() {
@@ -388,4 +412,5 @@
         carregarDados();
     </script>
 </body>
+
 </html>
