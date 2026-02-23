@@ -388,18 +388,34 @@
         }
 
         function calcSim() {
+            // Pegando os valores digitados (se estiver vazio, vira 0)
             const compradas = parseFloat(document.getElementById('sim-qtd').value) || 0;
             const saldoB = parseFloat(document.getElementById('sim-saldo-b').value) || 0;
             const saldoS = parseFloat(document.getElementById('sim-saldo-s').value) || 0;
             const bonus = parseFloat(document.getElementById('sim-pct').value) || 0;
+            
+            // Custos
             const custoCompra = parseFloat(document.getElementById('sim-custo').value) || 0;
             const taxas = parseFloat(document.getElementById('sim-taxas').value) || 0;
-            const v = parseFloat(document.getElementById('sim-venda').value) || 0;
-            const totalMilhas = compradas + (saldoB * (1 + bonus / 100)) + saldoS;
-            const totalCusto = custoCompra + taxas;
-            const cpm = totalMilhas > 0 ? (totalCusto / totalMilhas * 1000).toFixed(2) : 0;
-            const lucro = (v - totalCusto).toFixed(2);
-            document.getElementById('sim-res').innerHTML = `Milhas: ${totalMilhas.toLocaleString()} | CPM Compra: R$ ${cpm} | <b>Lucro: R$ ${lucro}</b>`;
+            const custoTotal = custoCompra + taxas;
+            
+            // Valor Venda
+            const valorVenda = parseFloat(document.getElementById('sim-venda').value) || 0;
+
+            // A Mágica Matemática: (Compradas + Saldo Bonificável) * Bônus + Saldo Seco
+            const milhasFinais = ((compradas + saldoB) * (1 + (bonus / 100))) + saldoS;
+            
+            // Custo por Milheiro (CPM) considerando o custo total pelas milhas geradas
+            const cpm = milhasFinais > 0 ? (custoTotal / milhasFinais * 1000).toFixed(2) : 0;
+            
+            // Lucro Limpo
+            const lucro = valorVenda - custoTotal;
+
+            // Mostrando o resultado na tela
+            document.getElementById('sim-res').innerHTML = 
+                `Milhas Totais: ${Math.floor(milhasFinais).toLocaleString('pt-BR')} | 
+                 CPM Médio: R$ ${cpm} | 
+                 <b>Lucro Líquido: R$ ${lucro.toFixed(2)}</b>`;
         }
         
         function calcC6() {
@@ -414,3 +430,4 @@
 </body>
 
 </html>
+
