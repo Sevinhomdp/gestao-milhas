@@ -3,462 +3,1255 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <title>Milhas Pro</title>
-    
     <meta name="apple-mobile-web-app-title" content="Milhas Pro">
-    
     <link rel="icon" type="image/png" href="https://i.postimg.cc/tTKqxQmB/Gemini-Generated-Image-m0zge7m0zge7m0zg.png">
     <link rel="apple-touch-icon" href="https://i.postimg.cc/tTKqxQmB/Gemini-Generated-Image-m0zge7m0zge7m0zg.png">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
-        :root { 
-            --primary: #0f172a; --accent: #d4af37; --bg: #f8fafc; --white: #ffffff; 
-            --success: #16a34a; --danger: #dc2626; --warning: #f59e0b; --gray: #64748b; --border: #e2e8f0; 
+        :root {
+            --primary: #0f172a; --accent: #d4af37; --accent-dim: rgba(212,175,55,0.12);
+            --bg: #f1f5f9; --white: #ffffff;
+            --success: #16a34a; --danger: #dc2626; --warning: #f59e0b;
+            --gray: #64748b; --border: #e2e8f0; --text: #1e293b;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
-        
-        body { background: var(--bg); display: flex; height: 100vh; color: #1e293b; overflow: hidden; flex-direction: column; }
+        body { background: var(--bg); display: flex; height: 100vh; color: var(--text); overflow: hidden; flex-direction: column; }
 
-        /* Header Mobile */
-        .mobile-header { display: none; background: var(--primary); color: white; padding: 15px; justify-content: space-between; align-items: center; z-index: 100; }
-        
-        /* Sidebar */
-        .sidebar { width: 260px; background: var(--primary); color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; transition: 0.3s; }
-        .brand { font-size: 22px; font-weight: bold; margin-bottom: 30px; color: var(--accent); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;}
-        .menu-btn { background: none; border: none; color: #94a3b8; text-align: left; padding: 14px 15px; cursor: pointer; font-size: 15px; width: 100%; border-radius: 8px; margin-bottom: 5px; transition: 0.2s; }
-        .menu-btn:hover, .menu-btn.active { background: rgba(255,255,255,0.1); color: white; border-left: 4px solid var(--accent); }
+        /* ── LOCK SCREEN ── */
+        #lock-screen {
+            position: fixed; inset: 0; background: var(--primary);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; gap: 16px;
+        }
+        #lock-screen h1 { color: var(--accent); font-size: 28px; }
+        #lock-screen p { color: #94a3b8; font-size: 14px; }
+        #lock-input { padding: 14px 20px; border-radius: 10px; border: 2px solid rgba(212,175,55,0.4); background: rgba(255,255,255,0.05); color: white; font-size: 18px; text-align: center; letter-spacing: 4px; width: 240px; outline: none; }
+        #lock-input:focus { border-color: var(--accent); }
+        #lock-btn { background: var(--accent); color: var(--primary); border: none; padding: 14px 40px; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
+        #lock-err { color: #ef4444; font-size: 13px; min-height: 18px; }
 
-        /* Main Content */
+        /* ── TOASTS ── */
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast { background: var(--primary); color: white; padding: 12px 20px; border-radius: 10px; font-size: 13px; border-left: 4px solid var(--accent); box-shadow: 0 8px 24px rgba(0,0,0,0.25); animation: slideIn 0.3s ease; pointer-events: auto; max-width: 280px; }
+        .toast.success { border-left-color: var(--success); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warning); }
+        @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+
+        /* ── MODAL ── */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 8000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-box { background: white; border-radius: 16px; padding: 28px; max-width: 440px; width: 90%; box-shadow: 0 24px 60px rgba(0,0,0,0.3); animation: modalIn 0.25s ease; }
+        @keyframes modalIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+        .modal-box h3 { font-size: 18px; margin-bottom: 10px; color: var(--primary); }
+        .modal-box p { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 20px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+        /* ── SCORE BADGE ── */
+        .op-score { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 8px; }
+        .score-green { background: #dcfce7; color: var(--success); }
+        .score-yellow { background: #fef9c3; color: #854d0e; }
+        .score-red { background: #fee2e2; color: var(--danger); }
+
+        /* ── MOBILE HEADER ── */
+        .mobile-header { display: none; background: var(--primary); color: white; padding: 14px 16px; justify-content: space-between; align-items: center; z-index: 100; }
+
+        /* ── SIDEBAR ── */
+        .sidebar { width: 260px; background: var(--primary); color: white; display: flex; flex-direction: column; padding: 20px; flex-shrink: 0; }
+        .brand { font-size: 22px; font-weight: bold; margin-bottom: 30px; color: var(--accent); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        .menu-btn { background: none; border: none; color: #94a3b8; text-align: left; padding: 13px 14px; cursor: pointer; font-size: 14px; width: 100%; border-radius: 8px; margin-bottom: 4px; transition: 0.2s; }
+        .menu-btn:hover, .menu-btn.active { background: rgba(255,255,255,0.1); color: white; border-left: 3px solid var(--accent); padding-left: 11px; }
+
+        /* ── LAYOUT ── */
         .layout-container { display: flex; flex: 1; overflow: hidden; }
-        .content { flex: 1; padding: 25px; overflow-y: auto; position: relative; }
-        .view-title { margin-bottom: 25px; font-size: 22px; font-weight: 800; color: var(--primary); }
-        
-        /* Cards */
-        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .card { background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid var(--primary); }
-        .card h3 { font-size: 11px; color: var(--gray); text-transform: uppercase; margin-bottom: 5px; }
+        .content { flex: 1; padding: 24px; overflow-y: auto; }
+        .view-title { margin-bottom: 20px; font-size: 22px; font-weight: 800; color: var(--primary); }
+
+        /* ── DASHBOARD CARDS ── */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 14px; margin-bottom: 18px; }
+        .card { background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-left: 4px solid var(--primary); }
+        .card h3 { font-size: 10px; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
         .card .value { font-size: 22px; font-weight: 700; }
+        .card.accent-card { border-left-color: var(--accent); }
+        .card.success-card { border-left-color: var(--success); }
+        .card.warning-card { border-left-color: var(--warning); }
+        .card.info-card { border-left-color: #3b82f6; }
 
-        /* Formulários */
-        .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        /* ── PANELS ── */
+        .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 18px; }
+        .panel-title { font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; }
         label { font-size: 12px; font-weight: 600; color: var(--gray); margin-bottom: 4px; display: block; }
-        input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: #fff; }
+        input, select { width: 100%; padding: 11px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; background: #fff; transition: border-color 0.2s; }
+        input:focus, select:focus { outline: none; border-color: var(--accent); }
+        input.invalid { border-color: var(--danger); background: #fff5f5; }
 
-        /* Botões */
-        .btn { padding: 14px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; font-size: 15px; }
-        .btn-p { background: var(--primary); color: white; }
-        .btn-s { background: var(--success); color: white; }
-        .btn-d { background: var(--danger); color: white; padding: 8px; font-size: 12px; }
+        /* ── BUTTONS ── */
+        .btn { padding: 12px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
+        .btn:hover { filter: brightness(0.92); }
+        .btn-primary { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; padding: 6px 12px; font-size: 11px; }
+        .btn-warning { background: var(--warning); color: white; padding: 6px 12px; font-size: 11px; }
+        .btn-ghost { background: var(--bg); color: var(--primary); border: 1.5px solid var(--border); }
 
-        /* Tabelas Responsivas */
-        .table-wrapper { background: white; border-radius: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; min-width: 500px; }
-        th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 12px; color: var(--gray); }
-        td { padding: 12px; font-size: 14px; border-bottom: 1px solid var(--border); }
+        /* ── TABLES ── */
+        .table-wrapper { background: white; border-radius: 10px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 480px; }
+        th { background: #f8fafc; padding: 11px 12px; text-align: left; font-size: 11px; color: var(--gray); letter-spacing: 0.5px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 11px 12px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #fafbff; }
 
-        /* Sincronização Indicator */
-        #sync-status { position: fixed; bottom: 10px; right: 10px; font-size: 10px; padding: 5px 10px; border-radius: 20px; background: #eee; z-index: 200; }
+        /* ── CHART ── */
+        .chart-container { position: relative; height: 200px; }
 
-        /* RESPONSIVIDADE CELULAR */
+        /* ── DRE ── */
+        .dre-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .dre-row:last-child { border-bottom: none; }
+        .dre-row.total { font-weight: 700; font-size: 16px; border-top: 2px solid var(--primary); margin-top: 4px; padding-top: 12px; }
+        .dre-pos { color: var(--success); font-weight: 600; }
+        .dre-neg { color: var(--danger); font-weight: 600; }
+
+        /* ── SYNC ── */
+        #sync-status { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; padding: 5px 14px; border-radius: 20px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 200; color: var(--gray); }
+
+        /* ── MONTH SELECTOR ── */
+        .month-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+        .month-tab { padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: white; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--gray); transition: 0.2s; }
+        .month-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* ── SALDOS GRID ── */
+        .saldo-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-top: 3px solid var(--accent); }
+        .saldo-card h3 { font-size: 12px; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .saldos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+
+        /* ── RESPONSIVO ── */
         @media (max-width: 768px) {
             .mobile-header { display: flex; }
-            .sidebar { 
-                position: fixed; left: -260px; top: 58px; bottom: 0; z-index: 99; 
-                box-shadow: 10px 0 15px rgba(0,0,0,0.1);
-            }
+            .sidebar { position: fixed; left: -260px; top: 56px; bottom: 0; z-index: 99; box-shadow: 10px 0 20px rgba(0,0,0,0.15); }
             .sidebar.active { left: 0; }
-            .content { padding: 15px; }
+            .content { padding: 14px; }
             .view-title { font-size: 18px; }
-            .grid-form { grid-template-columns: 1fr; }
-            .cards { grid-template-columns: 1fr; }
+            .grid-form { grid-template-columns: 1fr 1fr; }
+            .cards { grid-template-columns: 1fr 1fr; }
             .card .value { font-size: 18px; }
-            input, select, .btn { font-size: 16px; } 
+            input, select, .btn { font-size: 16px; }
+            #toast-container { bottom: 70px; right: 12px; left: 12px; }
+        }
+        @media (max-width: 480px) {
+            .grid-form, .cards { grid-template-columns: 1fr; }
         }
 
         .hidden { display: none; }
-        .sync-loading { color: var(--warning); }
-        .sync-ok { color: var(--success); }
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+        .text-warning { color: var(--warning); }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-compra { background: #dbeafe; color: #1d4ed8; }
+        .badge-venda { background: #dcfce7; color: #166534; }
+        .badge-transf { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body>
 
-    <header class="mobile-header">
-        <div style="font-weight:bold; color:var(--accent)">✈ MILHAS PRO</div>
-        <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:24px;">☰</button>
-    </header>
+<!-- ── TELA DE BLOQUEIO ── -->
+<div id="lock-screen">
+    <h1>✈ MILHAS PRO</h1>
+    <p>Acesso restrito — insira a senha</p>
+    <input id="lock-input" type="password" placeholder="••••••" autocomplete="off" onkeydown="if(event.key==='Enter') tentarAcesso()">
+    <button id="lock-btn" onclick="tentarAcesso()">Entrar</button>
+    <span id="lock-err"></span>
+</div>
 
-    <div class="layout-container">
-        <aside class="sidebar" id="sidebar">
-            <div class="brand">✈ MILHAS PRO</div>
-            <nav>
-                <button class="menu-btn active" onclick="navegar('dashboard')">📊 Dashboard</button>
-                <button class="menu-btn" onclick="navegar('saldos')">💰 Saldos</button>
-                <button class="menu-btn" onclick="navegar('simulador')">🧮 Simulador</button>
-                <button class="menu-btn" onclick="navegar('operacoes')">📝 Operações</button>
-                <button class="menu-btn" onclick="navegar('cartoes')">💳 Cartões</button>
-            </nav>
-            <div style="margin-top:auto; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1);">
-                <button class="menu-btn" onclick="salvar()">☁ Sincronizar Agora</button>
-                <button class="menu-btn" onclick="exportar()">💾 Backup Manual</button>
+<!-- ── HEADER MOBILE ── -->
+<header class="mobile-header">
+    <div style="font-weight:bold; color:var(--accent)">✈ MILHAS PRO</div>
+    <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:24px;">☰</button>
+</header>
+
+<!-- ── LAYOUT PRINCIPAL ── -->
+<div class="layout-container">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">✈ MILHAS PRO</div>
+        <nav>
+            <button class="menu-btn active" onclick="navegar('dashboard', this)">📊 Dashboard</button>
+            <button class="menu-btn" onclick="navegar('saldos', this)">💰 Saldos</button>
+            <button class="menu-btn" onclick="navegar('simulador', this)">🧮 Simulador</button>
+            <button class="menu-btn" onclick="navegar('operacoes', this)">📝 Operações</button>
+            <button class="menu-btn" onclick="navegar('dre', this)">📈 DRE Mensal</button>
+            <button class="menu-btn" onclick="navegar('cartoes', this)">💳 Cartões</button>
+        </nav>
+        <div style="margin-top:auto; padding-top:18px; border-top:1px solid rgba(255,255,255,0.1);">
+            <button class="menu-btn" onclick="exportarCSV()">📥 Exportar CSV</button>
+            <button class="menu-btn" onclick="salvarManual()">☁ Sincronizar Agora</button>
+        </div>
+    </aside>
+
+    <main class="content">
+        <div id="sync-status">Iniciando...</div>
+
+        <!-- ════════════════ DASHBOARD ════════════════ -->
+        <section id="dashboard" class="view">
+            <div class="view-title">Dashboard</div>
+
+            <div class="cards">
+                <div class="card accent-card">
+                    <h3>Total de Milhas</h3>
+                    <div class="value" id="d-total-milhas">0</div>
+                </div>
+                <div class="card success-card">
+                    <h3>Lucro Realizado</h3>
+                    <div class="value" id="d-lucro-realizado">R$ 0,00</div>
+                </div>
+                <div class="card" style="border-left-color:#3b82f6">
+                    <h3>Lucro a Receber</h3>
+                    <div class="value" id="d-lucro-receber">R$ 0,00</div>
+                </div>
+                <div class="card warning-card">
+                    <h3>Faturas Abertas</h3>
+                    <div class="value" id="d-giro">R$ 0,00</div>
+                </div>
+                <div class="card info-card" style="border-left-color:#8b5cf6">
+                    <h3>ROI Médio</h3>
+                    <div class="value" id="d-roi-medio">—</div>
+                </div>
+                <div class="card">
+                    <h3>CPM Médio Compra</h3>
+                    <div class="value" id="d-cpm-medio">—</div>
+                </div>
             </div>
-        </aside>
 
-        <main class="content">
-            <div id="sync-status">Iniciando...</div>
-
-            <section id="dashboard" class="view">
-                <div class="view-title">Dashboard</div>
-                <div class="cards">
-                    <div class="card" style="border-left-color: var(--primary)"><h3>Total Milhas na Carteira</h3><div class="value" id="d-total-milhas">0</div></div>
-                    <div class="card" style="border-left-color: var(--success)"><h3>Lucro Estimado</h3><div class="value" id="d-lucro">R$ 0,00</div></div>
-                    <div class="card" style="border-left-color: var(--warning)"><h3>Faturas Abertas</h3><div class="value" id="d-giro">R$ 0,00</div></div>
+            <div class="panel">
+                <div class="panel-title">Evolução de Saldo de Milhas</div>
+                <div class="chart-container">
+                    <canvas id="chart-saldo"></canvas>
                 </div>
-                <div class="panel">
-                    <h4 style="margin-bottom:10px; font-size:14px">Vencimentos Próximos</h4>
-                    <div class="table-wrapper"><table><thead><tr><th>Cartão</th><th>Venc.</th><th>Valor</th></tr></thead><tbody id="faturas-body"></tbody></table></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Lucro por Programa (Top 5)</div>
+                <div class="chart-container" style="height:160px">
+                    <canvas id="chart-prog"></canvas>
                 </div>
-            </section>
+            </div>
 
-            <section id="saldos" class="view hidden">
-                <div class="view-title">Minha Carteira</div>
-                <div class="grid-form" id="saldos-container"></div>
-            </section>
-
-            <section id="simulador" class="view hidden">
-                <div class="view-title">Laboratório de Testes</div>
-                <div class="panel">
-                    <div class="grid-form">
-                        <div><label>Milhas Compradas</label><input type="number" id="sim-qtd" oninput="calcSim()"></div>
-                        <div><label>Saldo Bonificável</label><input type="number" id="sim-saldo-b" oninput="calcSim()"></div>
-                        <div><label>Saldo Seco</label><input type="number" id="sim-saldo-s" oninput="calcSim()"></div>
-                        <div><label>Bônus (%)</label><input type="number" id="sim-pct" value="100" oninput="calcSim()"></div>
-                        <div><label>Custo Compra (R$)</label><input type="number" id="sim-custo" oninput="calcSim()"></div>
-                        <div><label>Taxas/Clubes (R$)</label><input type="number" id="sim-taxas" oninput="calcSim()"></div>
-                        <div style="grid-column: span 2;"><label>VALOR TOTAL DA VENDA (R$)</label><input type="number" id="sim-venda" oninput="calcSim()"></div>
-                    </div>
-                    <div id="sim-res" style="margin-top:20px; padding:20px; background:#f1f5f9; border-radius:8px; border-left: 5px solid var(--accent); line-height: 1.8;">
-                        Aguardando dados...
-                    </div>
-                </div>
-            </section>
-
-            <section id="operacoes" class="view hidden">
-                <div class="view-title">Lançamentos</div>
-                
-                <div class="panel">
-                    <h4>Nova Operação</h4>
-                    <select id="tipo-op" onchange="toggleFormOp()" style="margin-bottom:15px; border-color:var(--accent)">
-                        <option value="compra">🛒 Compra / Entrada</option>
-                        <option value="transf">🔄 Transferência Bonificada</option>
-                        <option value="venda">💰 Venda / Saída</option>
-                    </select>
-
-                    <div id="form-compra" class="grid-form">
-                        <div><label>Programa</label><select class="prog-select" id="op-prog"></select></div>
-                        <div><label>Qtd Milhas</label><input type="number" id="op-qtd"></div>
-                        <div><label>Custo (R$)</label><input type="number" id="op-valor"></div>
-                        <div><label>Cartão</label><select class="card-select" id="op-cartao"></select></div>
-                        <div><label>Parcelas</label><input type="number" id="op-parc" value="1"></div>
-                        <div><label>Data</label><input type="date" id="op-data"></div>
-                    </div>
-
-                    <div id="form-transf" class="grid-form hidden">
-                        <div><label>Origem</label><select class="prog-select" id="tr-origem"></select></div>
-                        <div><label>Destino</label><select class="prog-select" id="tr-destino"></select></div>
-                        <div><label>Qtd Enviada</label><input type="number" id="tr-qtd"></div>
-                        <div><label>Bônus (%)</label><input type="number" id="tr-bonus" value="100"></div>
-                        <div><label>Taxa (R$)</label><input type="number" id="tr-taxa" value="0"></div>
-                        <div><label>Cartão Taxa</label><select class="card-select" id="tr-cartao"></select></div>
-                    </div>
-
-                    <div id="form-venda" class="grid-form hidden">
-                        <div><label>Programa</label><select class="prog-select" id="v-prog"></select></div>
-                        <div><label>Qtd Vendida</label><input type="number" id="v-qtd"></div>
-                        <div><label>Valor Recebido (R$)</label><input type="number" id="v-valor"></div>
-                        <div><label>Data Recebimento</label><input type="date" id="v-data-rec"></div>
-                    </div>
-
-                    <button class="btn btn-p" id="btn-executar" onclick="executarAcao()">Lançar na Planilha</button>
-                </div>
-
+            <div class="panel">
+                <div class="panel-title">Vencimentos Próximos</div>
                 <div class="table-wrapper">
                     <table>
-                        <thead><tr><th>Data</th><th>Item</th><th>Qtd</th><th>Tipo / Detalhes</th></tr></thead>
+                        <thead><tr><th>Cartão</th><th>Venc.</th><th>Valor</th></tr></thead>
+                        <tbody id="faturas-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════════════ SALDOS ════════════════ -->
+        <section id="saldos" class="view hidden">
+            <div class="view-title">Minha Carteira</div>
+            <div class="saldos-grid" id="saldos-container"></div>
+        </section>
+
+        <!-- ════════════════ SIMULADOR ════════════════ -->
+        <section id="simulador" class="view hidden">
+            <div class="view-title">Laboratório de Testes</div>
+            <div class="panel">
+                <div class="grid-form">
+                    <div><label>Milhas Compradas</label><input type="number" id="sim-qtd" oninput="calcSim()"></div>
+                    <div><label>Saldo Bonificável</label><input type="number" id="sim-saldo-b" oninput="calcSim()"></div>
+                    <div><label>Saldo Seco</label><input type="number" id="sim-saldo-s" oninput="calcSim()"></div>
+                    <div><label>Bônus (%)</label><input type="number" id="sim-pct" value="100" oninput="calcSim()"></div>
+                    <div><label>Custo Compra (R$)</label><input type="number" id="sim-custo" oninput="calcSim()"></div>
+                    <div><label>Taxas/Clubes (R$)</label><input type="number" id="sim-taxas" oninput="calcSim()"></div>
+                    <div style="grid-column: span 2;"><label>VALOR TOTAL DA VENDA (R$)</label><input type="number" id="sim-venda" oninput="calcSim()"></div>
+                </div>
+                <div id="sim-res" style="margin-top:18px; padding:18px; background:#f8fafc; border-radius:10px; border-left:4px solid var(--accent);">
+                    Aguardando dados...
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════════════ OPERAÇÕES ════════════════ -->
+        <section id="operacoes" class="view hidden">
+            <div class="view-title">Lançamentos</div>
+
+            <div class="panel">
+                <div class="panel-title">Nova Operação</div>
+                <select id="tipo-op" onchange="toggleFormOp()" style="margin-bottom:14px; border-color:var(--accent)">
+                    <option value="compra">🛒 Compra / Entrada</option>
+                    <option value="transf">🔄 Transferência Bonificada</option>
+                    <option value="venda">💰 Venda / Saída</option>
+                </select>
+
+                <!-- FORM COMPRA -->
+                <div id="form-compra" class="grid-form">
+                    <div><label>Programa *</label><select id="op-prog"></select></div>
+                    <div><label>Qtd Milhas *</label><input type="number" id="op-qtd" min="1"></div>
+                    <div><label>Custo (R$) *</label><input type="number" id="op-valor" min="0"></div>
+                    <div><label>Cartão</label><select id="op-cartao"></select></div>
+                    <div><label>Parcelas</label><input type="number" id="op-parc" value="1" min="1"></div>
+                    <div><label>Data</label><input type="date" id="op-data"></div>
+                </div>
+
+                <!-- FORM TRANSF -->
+                <div id="form-transf" class="grid-form hidden">
+                    <div><label>Origem *</label><select id="tr-origem"></select></div>
+                    <div><label>Destino *</label><select id="tr-destino"></select></div>
+                    <div><label>Qtd Enviada *</label><input type="number" id="tr-qtd" min="1"></div>
+                    <div><label>Bônus (%)</label><input type="number" id="tr-bonus" value="100"></div>
+                    <div><label>Taxa (R$)</label><input type="number" id="tr-taxa" value="0" min="0"></div>
+                    <div><label>Cartão Taxa</label><select id="tr-cartao"></select></div>
+                </div>
+
+                <!-- FORM VENDA -->
+                <div id="form-venda" class="grid-form hidden">
+                    <div><label>Programa *</label><select id="v-prog"></select></div>
+                    <div><label>Qtd Vendida *</label><input type="number" id="v-qtd" min="1"></div>
+                    <div><label>Valor Recebido (R$) *</label><input type="number" id="v-valor" min="0"></div>
+                    <div><label>Data Recebimento</label><input type="date" id="v-data-rec"></div>
+                    <div><label>Status</label>
+                        <select id="v-status">
+                            <option value="pendente">⏳ Pendente</option>
+                            <option value="recebido">✅ Já Recebido</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- SCORE PREVIEW -->
+                <div id="score-preview" style="margin-top:12px;"></div>
+
+                <button class="btn btn-primary" id="btn-executar" onclick="executarAcao()">Lançar Operação</button>
+            </div>
+
+            <!-- HISTÓRICO -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>Histórico de Operações</span>
+                    <button class="btn btn-ghost" onclick="exportarCSV()" style="padding:6px 14px; font-size:12px;">↓ CSV</button>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Data</th><th>Programa</th><th>Qtd</th><th>Tipo</th><th>Valor</th><th>Ações</th></tr></thead>
                         <tbody id="hist-body"></tbody>
                     </table>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <section id="cartoes" class="view hidden">
-                <div class="view-title">Gerenciar Cartões</div>
-                <div class="panel">
-                    <h4>Adicionar Novo</h4>
-                    <div class="grid-form">
-                        <div><label>Nome</label><input type="text" id="c-nome"></div>
-                        <div><label>Fechamento</label><input type="number" id="c-fecha"></div>
-                        <div><label>Vencimento</label><input type="number" id="c-vence"></div>
-                        <div><label style="color:transparent">.</label><button class="btn btn-p" onclick="addCartao()">Salvar</button></div>
+        <!-- ════════════════ DRE ════════════════ -->
+        <section id="dre" class="view hidden">
+            <div class="view-title">DRE — Resultado Mensal</div>
+            <div class="month-tabs" id="month-tabs"></div>
+            <div class="panel" id="dre-content">
+                <p style="color:var(--gray); text-align:center; padding:20px;">Selecione um mês acima.</p>
+            </div>
+        </section>
+
+        <!-- ════════════════ CARTÕES ════════════════ -->
+        <section id="cartoes" class="view hidden">
+            <div class="view-title">Gerenciar Cartões</div>
+            <div class="panel">
+                <div class="panel-title">Adicionar Novo</div>
+                <div class="grid-form">
+                    <div><label>Nome *</label><input type="text" id="c-nome" placeholder="Ex: Nubank Ultravioleta"></div>
+                    <div><label>Fechamento (dia) *</label><input type="number" id="c-fecha" min="1" max="31" placeholder="Ex: 5"></div>
+                    <div><label>Vencimento (dia) *</label><input type="number" id="c-vence" min="1" max="31" placeholder="Ex: 12"></div>
+                    <div><label style="color:transparent">.</label><button class="btn btn-success" onclick="addCartao()">+ Adicionar</button></div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-title">Cartões Salvos</div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Nome</th><th>Fechamento</th><th>Vencimento</th><th>Ação</th></tr></thead>
+                        <tbody id="cartoes-lista-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="panel" style="background: var(--primary);">
+                <div class="panel-title" style="color:var(--accent)">Calculadora C6 Black</div>
+                <div class="grid-form">
+                    <div><label style="color:#94a3b8">Gasto R$</label><input type="number" id="c6-r" oninput="calcC6()" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.15); color:white;"></div>
+                    <div><label style="color:#94a3b8">Dólar</label>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="number" id="c6-d" value="5.80" oninput="calcC6()" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.15); color:white;">
+                            <button id="c6-dolar-btn" onclick="buscarDolar()" title="Buscar cotação atual" style="background:var(--accent); color:var(--primary); border:none; border-radius:8px; padding:8px 10px; cursor:pointer; font-size:12px; font-weight:700; white-space:nowrap; flex-shrink:0;">🔄 Atualizar</button>
+                        </div>
+                    </div>
+                    <div style="text-align:center; padding-top:20px;">
+                        <div style="font-size:11px; color:#94a3b8; text-transform:uppercase;">Pontos gerados</div>
+                        <div id="c6-res" style="font-size:28px; font-weight:700; color:var(--accent)">0</div>
                     </div>
                 </div>
-                <div class="panel">
-                    <h4>Cartões Salvos</h4>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead><tr><th>Nome</th><th>Fechamento</th><th>Vencimento</th><th>Ação</th></tr></thead>
-                            <tbody id="cartoes-lista-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="panel" style="background: var(--primary); color: white;">
-                    <h4 style="color:var(--accent)">Calculadora C6 Black</h4>
-                    <div class="grid-form">
-                        <div><label style="color:white">Gasto R$</label><input type="number" id="c6-r" oninput="calcC6()"></div>
-                        <div><label style="color:white">Dólar</label><input type="number" id="c6-d" value="5.80" oninput="calcC6()"></div>
-                        <div style="text-align:center"><small>PONTOS:</small><div id="c6-res" style="font-size:24px; font-weight:bold; color:var(--accent)">0</div></div>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
+            </div>
+        </section>
 
-    <script>
-        // CONFIGURAÇÃO CLOUD - SUBSTITUA ABAIXO
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7Wy_DNj8IkENJZd5pRxq6bNYofVvTuiVFvH7Xu8PB9RwLZe17f6sjEH9nw0zsjqzeIw/exec";
-        
-        const PROGS = ["Livelo", "Esfera", "Átomos", "Smiles", "Azul", "LATAM", "Inter", "Itaú"];
-        let db = { saldos: {}, cartoes: [], parcelas: [], ops: [] };
-        PROGS.forEach(p => db.saldos[p] = 0);
+    </main>
+</div>
 
-        async function carregarDados() {
-            setSyncStatus("Carregando nuvem...", "loading");
-            try {
-                const r = await fetch(SCRIPT_URL);
-                const cloudData = await r.json();
-                if(cloudData && cloudData.saldos) {
-                    db = cloudData;
-                    setSyncStatus("Nuvem OK", "ok");
-                }
-            } catch(e) { 
-                const local = localStorage.getItem('milhas_pro_v50');
-                if(local) db = JSON.parse(local);
-                setSyncStatus("Erro Nuvem / Offline", "error"); 
-            }
-            renderizarTudo();
-        }
+<!-- ── TOAST CONTAINER ── -->
+<div id="toast-container"></div>
 
-        async function salvar() {
-            setSyncStatus("Salvando...", "loading");
-            localStorage.setItem('milhas_pro_v50', JSON.stringify(db));
-            try {
-                await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(db) });
-                setSyncStatus("Sincronizado", "ok");
-            } catch(e) { setSyncStatus("Pendente Sinc.", "error"); }
-        }
+<script>
+// ════════════════════════════════════════
+// CONFIGURAÇÃO
+// ════════════════════════════════════════
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7Wy_DNj8IkENJZd5pRxq6bNYofVvTuiVFvH7Xu8PB9RwLZe17f6sjEH9nw0zsjqzeIw/exec";
+const SENHA = "milhas2025"; // ← ALTERE AQUI A SENHA
 
-        function setSyncStatus(txt, status) {
-            const el = document.getElementById('sync-status');
-            el.innerText = txt;
-            el.className = status === 'ok' ? 'sync-ok' : (status === 'loading' ? 'sync-loading' : '');
-        }
+const PROGS = ["Livelo", "Esfera", "Átomos", "Smiles", "Azul", "LATAM", "Inter", "Itaú"];
+let db = { saldos: {}, cartoes: [], parcelas: [], ops: [] };
+PROGS.forEach(p => db.saldos[p] = 0);
 
-        function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
-        
-        function navegar(id) {
-            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
-            if(window.innerWidth < 768) toggleMenu();
-            renderizarTudo();
-        }
+let chartSaldo = null;
+let chartProg = null;
 
-        function toggleFormOp() {
-            const tipo = document.getElementById('tipo-op').value;
-            document.getElementById('form-compra').classList.add('hidden');
-            document.getElementById('form-transf').classList.add('hidden');
-            document.getElementById('form-venda').classList.add('hidden');
-            document.getElementById('form-' + tipo).classList.remove('hidden');
-        }
-
-        function renderizarTudo() {
-            // Saldos
-            const cont = document.getElementById('saldos-container');
-            cont.innerHTML = Object.keys(db.saldos).map(p => `
-                <div class="card"><h3>${p}</h3>
-                <input type="number" value="${db.saldos[p]}" onchange="db.saldos['${p}']=parseFloat(this.value);salvar();">
-                </div>`).join('');
-
-            // Selects
-            document.querySelectorAll('.prog-select').forEach(s => {
-                s.innerHTML = PROGS.map(p => `<option value="${p}">${p}</option>`).join('');
-            });
-            document.querySelectorAll('.card-select').forEach(s => {
-                s.innerHTML = db.cartoes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
-            });
-
-            // Dash: Faturas e Milhas Totais
-            const giro = db.parcelas.filter(p => !p.pago).reduce((acc, p) => acc + p.value, 0);
-            document.getElementById('d-giro').innerText = giro.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-            
-            const totalMilhas = Object.values(db.saldos).reduce((acc, val) => acc + val, 0);
-            document.getElementById('d-total-milhas').innerText = Math.floor(totalMilhas).toLocaleString('pt-BR');
-            
-            updateHist();
-            updateCartoes();
-        }
-
-        function executarAcao() {
-            const tipo = document.getElementById('tipo-op').value;
-            const dataHoje = new Date().toISOString().split('T')[0];
-
-            if(tipo === 'compra') {
-                const prog = document.getElementById('op-prog').value;
-                const qtd = parseFloat(document.getElementById('op-qtd').value);
-                const valor = parseFloat(document.getElementById('op-valor').value);
-                const parc = parseInt(document.getElementById('op-parc').value);
-                const cartao = document.getElementById('op-cartao').value;
-                const data = document.getElementById('op-data').value || dataHoje;
-                
-                db.saldos[prog] += qtd;
-                db.ops.push({ data, item: prog, qtd, tipo: 'COMPRA', valor });
-                for(let i=0; i<parc; i++) db.parcelas.push({ cartao, value: valor/parc, pago: false });
-            } 
-            else if(tipo === 'transf') {
-                const ori = document.getElementById('tr-origem').value;
-                const des = document.getElementById('tr-destino').value;
-                const qtd = parseFloat(document.getElementById('tr-qtd').value);
-                const bon = parseFloat(document.getElementById('tr-bonus').value);
-                const taxa = parseFloat(document.getElementById('tr-taxa').value);
-                
-                db.saldos[ori] -= qtd;
-                const f = qtd * (1 + bon/100);
-                db.saldos[des] += f;
-                db.ops.push({ data: dataHoje, item: `${ori}->${des}`, qtd: f, tipo: 'TRANSF', valor: taxa });
-            }
-            else {
-                const prog = document.getElementById('v-prog').value;
-                const qtd = parseFloat(document.getElementById('v-qtd').value);
-                const valor = parseFloat(document.getElementById('v-valor').value);
-                const dataRec = document.getElementById('v-data-rec').value;
-                
-                db.saldos[prog] -= qtd;
-                db.ops.push({ data: dataHoje, item: prog, qtd, tipo: 'VENDA', valor, dataRec });
-            }
-            salvar();
-            renderizarTudo();
-            alert("Operação lançada com sucesso!");
-        }
-
-        function updateHist() {
-            document.getElementById('hist-body').innerHTML = db.ops.map(o => {
-                let detalhes = o.tipo;
-                if(o.tipo === 'VENDA' && o.dataRec) {
-                    const dataFormatada = o.dataRec.split('-').reverse().join('/');
-                    detalhes += `<br><span style="color:var(--success); font-size:11px; font-weight:bold;">Recebe: ${dataFormatada}</span>`;
-                }
-                return `<tr><td>${o.data.split('-').reverse().join('/')}</td><td>${o.item}</td><td>${o.qtd.toLocaleString()}</td><td>${detalhes}</td></tr>`;
-            }).reverse().join('');
-        }
-
-        function addCartao() {
-            const nome = document.getElementById('c-nome').value;
-            const fecha = document.getElementById('c-fecha').value;
-            const vence = document.getElementById('c-vence').value;
-            if(!nome || !fecha || !vence) return alert("Preencha todos os campos do cartão!");
-            
-            db.cartoes.push({id: Date.now(), nome, fecha, vence });
-            salvar(); 
-            renderizarTudo();
-            
-            document.getElementById('c-nome').value = '';
-            document.getElementById('c-fecha').value = '';
-            document.getElementById('c-vence').value = '';
-        }
-
-        function updateCartoes() {
-            const tbody = document.getElementById('cartoes-lista-body');
-            tbody.innerHTML = db.cartoes.map(c => `
-                <tr>
-                    <td>${c.nome}</td>
-                    <td>Dia ${c.fecha}</td>
-                    <td>Dia ${c.vence}</td>
-                    <td><button class="btn btn-d" onclick="removerCartao(${c.id})">Remover</button></td>
-                </tr>`).join('');
-        }
-
-        function removerCartao(id) {
-            db.cartoes = db.cartoes.filter(x => x.id !== id);
-            salvar();
-            renderizarTudo();
-        }
-
-        function calcSim() {
-            const compradas = parseFloat(document.getElementById('sim-qtd').value) || 0;
-            const saldoB = parseFloat(document.getElementById('sim-saldo-b').value) || 0;
-            const saldoS = parseFloat(document.getElementById('sim-saldo-s').value) || 0;
-            const bonus = parseFloat(document.getElementById('sim-pct').value) || 0;
-            
-            const custoCompra = parseFloat(document.getElementById('sim-custo').value) || 0;
-            const taxas = parseFloat(document.getElementById('sim-taxas').value) || 0;
-            const custoTotal = custoCompra + taxas;
-            
-            const valorVenda = parseFloat(document.getElementById('sim-venda').value) || 0;
-
-            // Milhas Totais
-            const milhasFinais = ((compradas + saldoB) * (1 + (bonus / 100))) + saldoS;
-            
-            // Indicadores
-            const cpm = milhasFinais > 0 ? (custoTotal / milhasFinais * 1000).toFixed(2) : 0;
-            const cpv = milhasFinais > 0 ? (valorVenda / milhasFinais * 1000).toFixed(2) : 0;
-            
-            const lucro = valorVenda - custoTotal;
-            const roi = custoTotal > 0 ? (lucro / custoTotal) * 100 : 0;
-
-            // Lógica do ROI Saudável
-            let roiText = "";
-            let roiColor = "";
-            if (roi < 10) { 
-                roiText = "❌ Evitar (< 10%)"; roiColor = "var(--danger)"; 
-            } else if (roi >= 10 && roi < 20) { 
-                roiText = "⚠ Só se giro rápido (10-19%)"; roiColor = "var(--warning)"; 
-            } else if (roi >= 20 && roi < 30) { 
-                roiText = "✔ Bom / Aceitável (20-29%)"; roiColor = "var(--success)"; 
-            } else if (roi >= 30 && roi <= 50) { 
-                roiText = "✔✔ Excelente / Muito Bom (30-50%)"; roiColor = "var(--success)"; 
-            } else if (roi > 50) { 
-                roiText = "🚀 Prioridade Absoluta (> 50%)"; roiColor = "var(--accent)"; 
-            }
-
-            document.getElementById('sim-res').innerHTML = `
-                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; margin-bottom:10px;">
-                    <span><b>Milhas Geradas:</b> ${Math.floor(milhasFinais).toLocaleString('pt-BR')}</span>
-                    <span><b>Lucro Líquido:</b> R$ ${lucro.toFixed(2)}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; flex-wrap:wrap; border-top: 1px solid var(--border); padding-top: 10px;">
-                    <span><b>CPM Compra:</b> R$ ${cpm}</span>
-                    <span><b>CPV Venda:</b> R$ ${cpv}</span>
-                </div>
-                <div style="margin-top:15px; text-align:center; padding:10px; background:white; border-radius:8px; border: 1px solid var(--border);">
-                    <div style="font-size:12px; color:var(--gray); text-transform:uppercase;">Classificação de ROI</div>
-                    <div style="font-size:18px; font-weight:bold; color:${roiColor};">${roi.toFixed(2)}% — ${roiText}</div>
-                </div>
-            `;
-        }
-        
-        function calcC6() {
-            const r = parseFloat(document.getElementById('c6-r').value)||0;
-            const d = parseFloat(document.getElementById('c6-d').value)||1;
-            document.getElementById('c6-res').innerText = Math.floor((r/d)*2.5).toLocaleString();
-        }
-
-        // Início
+// ════════════════════════════════════════
+// PROTEÇÃO POR SENHA
+// ════════════════════════════════════════
+function tentarAcesso() {
+    const val = document.getElementById('lock-input').value;
+    if (val === SENHA) {
+        document.getElementById('lock-screen').style.display = 'none';
         carregarDados();
-    </script>
+    } else {
+        document.getElementById('lock-err').textContent = 'Senha incorreta. Tente novamente.';
+        document.getElementById('lock-input').value = '';
+        document.getElementById('lock-input').focus();
+    }
+}
+
+// ════════════════════════════════════════
+// DADOS
+// ════════════════════════════════════════
+async function carregarDados() {
+    setSyncStatus("Carregando nuvem...", "loading");
+    try {
+        const r = await fetch(SCRIPT_URL);
+        const cloudData = await r.json();
+        if (cloudData && cloudData.saldos) {
+            db = cloudData;
+            if (!db.ops) db.ops = [];
+            if (!db.parcelas) db.parcelas = [];
+            setSyncStatus("Nuvem OK ✓", "ok");
+        }
+    } catch(e) {
+        const local = localStorage.getItem('milhas_pro_v50');
+        if (local) db = JSON.parse(local);
+        setSyncStatus("Offline — dados locais", "error");
+    }
+    renderizarTudo();
+}
+
+async function salvar() {
+    setSyncStatus("Salvando...", "loading");
+    localStorage.setItem('milhas_pro_v50', JSON.stringify(db));
+    try {
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(db) });
+        setSyncStatus("Sincronizado ✓", "ok");
+    } catch(e) {
+        setSyncStatus("Pendente Sinc.", "error");
+    }
+}
+
+function salvarManual() { salvar(); toast("Sincronizando com a nuvem...", "info"); }
+
+function setSyncStatus(txt, status) {
+    const el = document.getElementById('sync-status');
+    el.textContent = txt;
+    el.style.color = status === 'ok' ? 'var(--success)' : status === 'loading' ? 'var(--warning)' : 'var(--danger)';
+}
+
+// ════════════════════════════════════════
+// TOAST NOTIFICATIONS
+// ════════════════════════════════════════
+function toast(msg, type = "info", duration = 3000) {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.4s'; setTimeout(() => t.remove(), 400); }, duration);
+}
+
+// ════════════════════════════════════════
+// MODAL DE CONFIRMAÇÃO
+// ════════════════════════════════════════
+function confirmar(titulo, mensagem, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+        <div class="modal-box">
+            <h3>${titulo}</h3>
+            <p>${mensagem}</p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+                <button class="btn btn-danger" id="modal-ok">Confirmar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('modal-cancel').onclick = () => overlay.remove();
+    document.getElementById('modal-ok').onclick = () => { overlay.remove(); onConfirm(); };
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+}
+
+// ════════════════════════════════════════
+// NAVEGAÇÃO
+// ════════════════════════════════════════
+function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
+
+function navegar(id, btn) {
+    document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    if (window.innerWidth < 768) toggleMenu();
+    if (id === 'dashboard') renderDashboard();
+    if (id === 'dre') renderDRE();
+    if (id === 'operacoes') { atualizarSelectsOp(); updateHist(); }
+    if (id === 'saldos') renderSaldos();
+    if (id === 'cartoes') updateCartoes();
+}
+
+// ════════════════════════════════════════
+// VALIDAÇÃO DE FORMULÁRIO
+// ════════════════════════════════════════
+function validarCampo(id) {
+    const el = document.getElementById(id);
+    if (!el) return true;
+    const valid = el.value !== '' && el.value !== null;
+    el.classList.toggle('invalid', !valid);
+    return valid;
+}
+
+function limparValidacao(...ids) {
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('invalid'); });
+}
+
+function validarFormulario() {
+    const tipo = document.getElementById('tipo-op').value;
+    let ok = true;
+    if (tipo === 'compra') {
+        if (!validarCampo('op-qtd') || parseFloat(document.getElementById('op-qtd').value) <= 0) {
+            document.getElementById('op-qtd').classList.add('invalid'); ok = false;
+        }
+        if (!validarCampo('op-valor') || parseFloat(document.getElementById('op-valor').value) < 0) {
+            document.getElementById('op-valor').classList.add('invalid'); ok = false;
+        }
+    } else if (tipo === 'transf') {
+        const ori = document.getElementById('tr-origem').value;
+        const des = document.getElementById('tr-destino').value;
+        if (ori === des) { toast("Origem e Destino não podem ser iguais!", "error"); ok = false; }
+        if (!validarCampo('tr-qtd') || parseFloat(document.getElementById('tr-qtd').value) <= 0) {
+            document.getElementById('tr-qtd').classList.add('invalid'); ok = false;
+        }
+        const qtd = parseFloat(document.getElementById('tr-qtd').value);
+        if (db.saldos[ori] < qtd) {
+            toast(`Saldo insuficiente em ${ori}! (${db.saldos[ori].toLocaleString()} milhas disponíveis)`, "error");
+            document.getElementById('tr-qtd').classList.add('invalid'); ok = false;
+        }
+    } else if (tipo === 'venda') {
+        if (!validarCampo('v-qtd') || parseFloat(document.getElementById('v-qtd').value) <= 0) {
+            document.getElementById('v-qtd').classList.add('invalid'); ok = false;
+        }
+        if (!validarCampo('v-valor') || parseFloat(document.getElementById('v-valor').value) <= 0) {
+            document.getElementById('v-valor').classList.add('invalid'); ok = false;
+        }
+        const prog = document.getElementById('v-prog').value;
+        const qtd = parseFloat(document.getElementById('v-qtd').value);
+        if (db.saldos[prog] < qtd) {
+            toast(`Saldo insuficiente em ${prog}! (${db.saldos[prog].toLocaleString()} milhas disponíveis)`, "error");
+            document.getElementById('v-qtd').classList.add('invalid'); ok = false;
+        }
+    }
+    if (!ok) toast("Corrija os campos destacados em vermelho.", "error");
+    return ok;
+}
+
+// ════════════════════════════════════════
+// SCORE DE OPERAÇÃO
+// ════════════════════════════════════════
+function calcScore() {
+    const tipo = document.getElementById('tipo-op').value;
+    const preview = document.getElementById('score-preview');
+
+    if (tipo === 'compra') {
+        const qtd = parseFloat(document.getElementById('op-qtd').value) || 0;
+        const custo = parseFloat(document.getElementById('op-valor').value) || 0;
+        if (!qtd || !custo) { preview.innerHTML = ''; return; }
+        const cpm = (custo / qtd * 1000);
+        let cls, label;
+        if (cpm < 18) { cls = 'score-green'; label = `✔ CPM excelente: R$ ${cpm.toFixed(2)}/mil — Prioridade Alta!`; }
+        else if (cpm < 25) { cls = 'score-yellow'; label = `⚡ CPM aceitável: R$ ${cpm.toFixed(2)}/mil — Verifique CPV de venda`; }
+        else { cls = 'score-red'; label = `⚠ CPM alto: R$ ${cpm.toFixed(2)}/mil — Considere evitar`; }
+        preview.innerHTML = `<span class="op-score ${cls}">${label}</span>`;
+    } else if (tipo === 'venda') {
+        const qtd = parseFloat(document.getElementById('v-qtd').value) || 0;
+        const val = parseFloat(document.getElementById('v-valor').value) || 0;
+        if (!qtd || !val) { preview.innerHTML = ''; return; }
+        const cpv = (val / qtd * 1000);
+        let cls, label;
+        if (cpv >= 28) { cls = 'score-green'; label = `✔ CPV excelente: R$ ${cpv.toFixed(2)}/mil`; }
+        else if (cpv >= 22) { cls = 'score-yellow'; label = `⚡ CPV razoável: R$ ${cpv.toFixed(2)}/mil`; }
+        else { cls = 'score-red'; label = `⚠ CPV baixo: R$ ${cpv.toFixed(2)}/mil — Renegociar?`; }
+        preview.innerHTML = `<span class="op-score ${cls}">${label}</span>`;
+    } else {
+        preview.innerHTML = '';
+    }
+}
+
+function toggleFormOp() {
+    const tipo = document.getElementById('tipo-op').value;
+    ['compra','transf','venda'].forEach(t => {
+        document.getElementById('form-' + t).classList.toggle('hidden', t !== tipo);
+    });
+    document.getElementById('score-preview').innerHTML = '';
+    limparValidacao('op-qtd','op-valor','tr-qtd','v-qtd','v-valor');
+}
+
+// ════════════════════════════════════════
+// EXECUTAR OPERAÇÃO
+// ════════════════════════════════════════
+function executarAcao() {
+    if (!validarFormulario()) return;
+
+    const tipo = document.getElementById('tipo-op').value;
+    const dataHoje = new Date().toISOString().split('T')[0];
+    let resumo = '';
+
+    if (tipo === 'compra') {
+        const prog  = document.getElementById('op-prog').value;
+        const qtd   = parseFloat(document.getElementById('op-qtd').value);
+        const valor = parseFloat(document.getElementById('op-valor').value);
+        const parc  = parseInt(document.getElementById('op-parc').value) || 1;
+        const cartao= document.getElementById('op-cartao').value;
+        const data  = document.getElementById('op-data').value || dataHoje;
+        resumo = `Compra de ${qtd.toLocaleString()} milhas ${prog} por R$ ${valor.toFixed(2)}`;
+
+        confirmar('Confirmar Compra', resumo, () => {
+            db.saldos[prog] = (db.saldos[prog] || 0) + qtd;
+            db.ops.push({ id: Date.now(), data, item: prog, qtd, tipo: 'COMPRA', valor, cartao, parc });
+            if (cartao) {
+                const card = db.cartoes.find(c => c.nome === cartao);
+                const dataCompra = new Date(data + 'T12:00:00');
+                for (let i = 0; i < parc; i++) {
+                    // Se a compra foi feita após o fechamento, primeira parcela cai no mês seguinte
+                    const deslocamento = (card && dataCompra.getDate() >= card.fecha) ? i + 1 : i;
+                    const dtVenc = new Date(dataCompra.getFullYear(), dataCompra.getMonth() + deslocamento, card ? card.vence : 1);
+                    const dueMonth = `${dtVenc.getFullYear()}-${String(dtVenc.getMonth()+1).padStart(2,'0')}`;
+                    db.parcelas.push({ cartao, value: valor / parc, pago: false, dueMonth, parcNum: i + 1, totalParc: parc });
+                }
+            }
+            finalizar();
+        });
+    } else if (tipo === 'transf') {
+        const ori   = document.getElementById('tr-origem').value;
+        const des   = document.getElementById('tr-destino').value;
+        const qtd   = parseFloat(document.getElementById('tr-qtd').value);
+        const bon   = parseFloat(document.getElementById('tr-bonus').value) || 0;
+        const taxa  = parseFloat(document.getElementById('tr-taxa').value) || 0;
+        const f     = qtd * (1 + bon / 100);
+        resumo = `Transferência de ${qtd.toLocaleString()} milhas de ${ori} → ${des} (bônus ${bon}%) = ${Math.floor(f).toLocaleString()} milhas`;
+
+        confirmar('Confirmar Transferência', resumo, () => {
+            db.saldos[ori] -= qtd;
+            db.saldos[des] = (db.saldos[des] || 0) + f;
+            db.ops.push({ id: Date.now(), data: dataHoje, item: `${ori}→${des}`, qtd: f, tipo: 'TRANSF', valor: taxa });
+            finalizar();
+        });
+    } else {
+        const prog    = document.getElementById('v-prog').value;
+        const qtd     = parseFloat(document.getElementById('v-qtd').value);
+        const valor   = parseFloat(document.getElementById('v-valor').value);
+        const dataRec = document.getElementById('v-data-rec').value;
+        const status  = document.getElementById('v-status').value;
+        resumo = `Venda de ${qtd.toLocaleString()} milhas ${prog} por R$ ${valor.toFixed(2)}`;
+
+        confirmar('Confirmar Venda', resumo, () => {
+            db.saldos[prog] -= qtd;
+            db.ops.push({ id: Date.now(), data: dataHoje, item: prog, qtd, tipo: 'VENDA', valor, dataRec, status });
+            finalizar();
+        });
+    }
+}
+
+function finalizar() {
+    salvar();
+    renderizarTudo();
+    toast("Operação lançada com sucesso!", "success");
+    // Limpar formulários
+    ['op-qtd','op-valor','tr-qtd','tr-taxa','v-qtd','v-valor','v-data-rec'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('op-parc').value = 1;
+    document.getElementById('score-preview').innerHTML = '';
+}
+
+// ════════════════════════════════════════
+// EXCLUIR OPERAÇÃO
+// ════════════════════════════════════════
+function excluirOp(id) {
+    const op = db.ops.find(o => o.id === id);
+    if (!op) return;
+    confirmar('Excluir Operação',
+        `Tem certeza que deseja excluir a operação: <b>${op.tipo} — ${op.item} — ${op.qtd.toLocaleString()}</b>?<br><br><small style="color:var(--danger)">⚠ Atenção: o saldo NÃO será revertido automaticamente. Ajuste manualmente se necessário.</small>`,
+        () => {
+            db.ops = db.ops.filter(o => o.id !== id);
+            salvar();
+            renderizarTudo();
+            toast("Operação excluída.", "warning");
+        });
+}
+
+// ════════════════════════════════════════
+// RENDERIZAÇÃO PRINCIPAL
+// ════════════════════════════════════════
+function renderizarTudo() {
+    atualizarSelectsOp();
+    renderDashboard();
+    updateHist();
+    updateCartoes();
+    renderSaldos();
+}
+
+function renderSaldos() {
+    const cont = document.getElementById('saldos-container');
+    cont.innerHTML = Object.keys(db.saldos).map(p => `
+        <div class="saldo-card">
+            <h3>${p}</h3>
+            <input type="number" value="${db.saldos[p] || 0}" 
+                onchange="db.saldos['${p}']=parseFloat(this.value)||0; salvar();">
+            <div style="margin-top:6px; font-size:11px; color:var(--gray)">
+                ${(db.saldos[p] || 0).toLocaleString('pt-BR')} milhas
+            </div>
+        </div>`).join('');
+}
+
+function atualizarSelectsOp() {
+    document.querySelectorAll('.prog-select').forEach(s => {
+        const cur = s.value;
+        s.innerHTML = PROGS.map(p => `<option value="${p}">${p}</option>`).join('');
+        if (cur) s.value = cur;
+    });
+    const progSelects = ['op-prog','tr-origem','tr-destino','v-prog'];
+    progSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = PROGS.map(p => `<option value="${p}">${p}</option>`).join('');
+    });
+    const cardSelects = ['op-cartao','tr-cartao'];
+    cardSelects.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<option value="">— Nenhum —</option>` + db.cartoes.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    });
+    // Adicionar listeners de score
+    ['op-qtd','op-valor','v-qtd','v-valor','tipo-op'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el._scoreAttached) {
+            el.addEventListener('input', calcScore);
+            el.addEventListener('change', calcScore);
+            el._scoreAttached = true;
+        }
+    });
+}
+
+// ════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════
+function renderDashboard() {
+    const totalMilhas = Object.values(db.saldos).reduce((a, v) => a + (v || 0), 0);
+    document.getElementById('d-total-milhas').textContent = Math.floor(totalMilhas).toLocaleString('pt-BR');
+
+    // Calcular Lucro
+    let lucroRealizado = 0;
+    let lucroAReceber = 0;
+    const ops = db.ops || [];
+
+    ops.forEach(o => {
+        if (o.tipo === 'VENDA') {
+            if (o.status === 'recebido' || !o.status) {
+                lucroRealizado += (o.valor || 0);
+            } else {
+                lucroAReceber += (o.valor || 0);
+            }
+        } else if (o.tipo === 'COMPRA') {
+            lucroRealizado -= (o.valor || 0);
+        } else if (o.tipo === 'TRANSF') {
+            lucroRealizado -= (o.valor || 0);
+        }
+    });
+
+    document.getElementById('d-lucro-realizado').textContent = lucroRealizado.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    document.getElementById('d-lucro-realizado').style.color = lucroRealizado >= 0 ? 'var(--success)' : 'var(--danger)';
+
+    document.getElementById('d-lucro-receber').textContent = lucroAReceber.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+
+    // Faturas abertas
+    const giro = (db.parcelas || []).filter(p => !p.pago).reduce((a, p) => a + (p.value || 0), 0);
+    document.getElementById('d-giro').textContent = giro.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+
+    // ROI médio do portfólio geral: (total vendas - total compras - taxas) / total compras
+    const totalVendas  = ops.filter(o => o.tipo === 'VENDA').reduce((a, o) => a + (o.valor || 0), 0);
+    const totalCompras = ops.filter(o => o.tipo === 'COMPRA').reduce((a, o) => a + (o.valor || 0), 0);
+    const totalTaxas   = ops.filter(o => o.tipo === 'TRANSF').reduce((a, o) => a + (o.valor || 0), 0);
+    const roiEl = document.getElementById('d-roi-medio');
+    if (totalCompras > 0) {
+        const roiGeral = ((totalVendas - totalCompras - totalTaxas) / totalCompras) * 100;
+        roiEl.textContent = roiGeral.toFixed(1) + '%';
+        roiEl.style.color = roiGeral >= 20 ? 'var(--success)' : roiGeral >= 10 ? 'var(--warning)' : 'var(--danger)';
+    } else {
+        roiEl.textContent = '—';
+        roiEl.style.color = 'inherit';
+    }
+
+    // CPM médio das compras do mês atual
+    const now = new Date();
+    const mesAtual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const comprasMes = ops.filter(o => o.tipo === 'COMPRA' && (o.data || '').startsWith(mesAtual));
+    if (comprasMes.length > 0) {
+        const totalQtd = comprasMes.reduce((a, o) => a + (o.qtd || 0), 0);
+        const totalVal = comprasMes.reduce((a, o) => a + (o.valor || 0), 0);
+        const cpm = totalQtd > 0 ? totalVal / totalQtd * 1000 : 0;
+        document.getElementById('d-cpm-medio').textContent = 'R$ ' + cpm.toFixed(2);
+    } else {
+        document.getElementById('d-cpm-medio').textContent = '—';
+    }
+
+    // Faturas — valor consolidado por mês de vencimento
+    const hoje = new Date();
+
+    // Compatibilidade: parcelas antigas sem dueMonth recebem o mês atual
+    (db.parcelas || []).forEach(p => {
+        if (!p.dueMonth && !p.pago) {
+            const now = new Date();
+            p.dueMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        }
+    });
+
+    const faturas = (db.cartoes || []).map(c => {
+        // Próxima data de vencimento (se já passou este mês, vai pro próximo)
+        let proximo = new Date(hoje.getFullYear(), hoje.getMonth(), c.vence);
+        if (proximo <= hoje) proximo = new Date(hoje.getFullYear(), hoje.getMonth() + 1, c.vence);
+        const diasRestantes = Math.ceil((proximo - hoje) / (1000 * 60 * 60 * 24));
+        const proximoMes = `${proximo.getFullYear()}-${String(proximo.getMonth()+1).padStart(2,'0')}`;
+
+        // Total do mês do próximo vencimento
+        const valorFatura = (db.parcelas || [])
+            .filter(p => !p.pago && p.cartao === c.nome && p.dueMonth === proximoMes)
+            .reduce((a, p) => a + (p.value || 0), 0);
+
+        // Meses futuros com compromisso
+        const parcelasFuturas = (db.parcelas || [])
+            .filter(p => !p.pago && p.cartao === c.nome && p.dueMonth > proximoMes);
+        const totalFuturo = parcelasFuturas.reduce((a, p) => a + (p.value || 0), 0);
+        const mesesFuturos = [...new Set(parcelasFuturas.map(p => p.dueMonth))].length;
+
+        return { ...c, diasRestantes, proximo, proximoMes, valorFatura, totalFuturo, mesesFuturos };
+    }).sort((a, b) => a.diasRestantes - b.diasRestantes);
+
+    document.getElementById('faturas-body').innerHTML = faturas.length ? faturas.map(c => {
+        const cor = c.diasRestantes <= 5 ? 'var(--danger)' : c.diasRestantes <= 10 ? 'var(--warning)' : 'inherit';
+        const dataFmt = c.proximo.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const valorFmt = c.valorFatura > 0
+            ? `<b>${c.valorFatura.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</b>`
+            : '<span style="color:var(--gray)">R$ 0,00</span>';
+        const futuroInfo = c.mesesFuturos > 0
+            ? `<br><small style="color:var(--gray)">+ ${c.mesesFuturos} mês(es) · ${c.totalFuturo.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} comprometidos</small>`
+            : '';
+        return `<tr>
+            <td><b>${c.nome}</b></td>
+            <td style="color:${cor}">
+                ${dataFmt} <small style="color:var(--gray)">(${c.diasRestantes}d)</small>
+                ${c.diasRestantes <= 5 ? ' ⚠' : ''}
+            </td>
+            <td>${valorFmt}${futuroInfo}</td>
+        </tr>`;
+    }).join('') : '<tr><td colspan="3" style="color:var(--gray); text-align:center; padding:20px;">Nenhum cartão cadastrado</td></tr>';
+
+    renderCharts();
+}
+
+// ════════════════════════════════════════
+// GRÁFICOS
+// ════════════════════════════════════════
+function renderCharts() {
+    const ops = db.ops || [];
+
+    // ── Gráfico de evolução de saldo ──
+    const ctxSaldo = document.getElementById('chart-saldo').getContext('2d');
+    const dataPoints = calcEvolucaoSaldo(ops);
+
+    if (chartSaldo) chartSaldo.destroy();
+    chartSaldo = new Chart(ctxSaldo, {
+        type: 'line',
+        data: {
+            labels: dataPoints.map(d => d.data),
+            datasets: [{
+                label: 'Total de Milhas',
+                data: dataPoints.map(d => d.total),
+                borderColor: '#d4af37',
+                backgroundColor: 'rgba(212,175,55,0.08)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 3,
+                pointBackgroundColor: '#d4af37'
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+            }
+        }
+    });
+
+    // ── Gráfico Lucro por Programa ──
+    const ctxProg = document.getElementById('chart-prog').getContext('2d');
+    const lucroPorProg = calcLucroPorProg(ops);
+
+    if (chartProg) chartProg.destroy();
+    chartProg = new Chart(ctxProg, {
+        type: 'bar',
+        data: {
+            labels: lucroPorProg.map(x => x.prog),
+            datasets: [{
+                label: 'Lucro (R$)',
+                data: lucroPorProg.map(x => x.lucro),
+                backgroundColor: lucroPorProg.map(x => x.lucro >= 0 ? 'rgba(22,163,74,0.7)' : 'rgba(220,38,38,0.7)'),
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+                y: { ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => 'R$ ' + v.toFixed(0) }, grid: { color: 'rgba(0,0,0,0.05)' } }
+            }
+        }
+    });
+}
+
+function calcEvolucaoSaldo(ops) {
+    if (!ops.length) return [{ data: 'Início', total: 0 }];
+    const sorted = [...ops].sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+    let total = 0;
+    const points = [];
+    sorted.forEach(o => {
+        if (o.tipo === 'COMPRA') total += (o.qtd || 0);
+        else if (o.tipo === 'VENDA') total -= (o.qtd || 0);
+        const dateStr = (o.data || '').split('-').reverse().join('/').substring(0, 5);
+        points.push({ data: dateStr, total: Math.max(0, total) });
+    });
+    // Limitar a 20 pontos
+    if (points.length > 20) {
+        const step = Math.floor(points.length / 20);
+        return points.filter((_, i) => i % step === 0 || i === points.length - 1);
+    }
+    return points;
+}
+
+function calcLucroPorProg(ops) {
+    const lucros = {};
+    ops.forEach(o => {
+        if (o.tipo === 'VENDA') lucros[o.item] = (lucros[o.item] || 0) + (o.valor || 0);
+        else if (o.tipo === 'COMPRA') lucros[o.item] = (lucros[o.item] || 0) - (o.valor || 0);
+    });
+    return Object.entries(lucros)
+        .map(([prog, lucro]) => ({ prog, lucro }))
+        .sort((a, b) => b.lucro - a.lucro)
+        .slice(0, 5);
+}
+
+// ════════════════════════════════════════
+// HISTÓRICO
+// ════════════════════════════════════════
+function updateHist() {
+    const ops = db.ops || [];
+    const tbody = document.getElementById('hist-body');
+    if (!ops.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--gray); text-align:center; padding:20px;">Nenhuma operação lançada</td></tr>';
+        return;
+    }
+    tbody.innerHTML = [...ops].reverse().map(o => {
+        const tipo = o.tipo === 'COMPRA' ? `<span class="badge badge-compra">COMPRA</span>` :
+                     o.tipo === 'VENDA'  ? `<span class="badge badge-venda">VENDA</span>` :
+                                           `<span class="badge badge-transf">TRANSF</span>`;
+        const dataFmt = (o.data || '').split('-').reverse().join('/');
+        const valorFmt = `R$ ${(o.valor || 0).toFixed(2)}`;
+        const statusBadge = o.tipo === 'VENDA' && o.status === 'pendente' ?
+            `<br><small style="color:var(--warning); font-size:10px;">⏳ A receber${o.dataRec ? ' em ' + o.dataRec.split('-').reverse().join('/') : ''}</small>` : '';
+
+        return `<tr>
+            <td>${dataFmt}</td>
+            <td>${o.item}</td>
+            <td>${Math.floor(o.qtd || 0).toLocaleString('pt-BR')}</td>
+            <td>${tipo}${statusBadge}</td>
+            <td>${valorFmt}</td>
+            <td>
+                <button class="btn btn-danger" onclick="excluirOp(${o.id})">✕</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ════════════════════════════════════════
+// DRE MENSAL
+// ════════════════════════════════════════
+function renderDRE() {
+    const ops = db.ops || [];
+    const meses = {};
+    ops.forEach(o => {
+        if (!o.data) return;
+        const mes = o.data.substring(0, 7);
+        if (!meses[mes]) meses[mes] = { receitas: 0, custos: 0, taxas: 0, qtdVendas: 0, qtdCompras: 0 };
+        if (o.tipo === 'VENDA') { meses[mes].receitas += (o.valor || 0); meses[mes].qtdVendas++; }
+        else if (o.tipo === 'COMPRA') { meses[mes].custos += (o.valor || 0); meses[mes].qtdCompras++; }
+        else if (o.tipo === 'TRANSF') meses[mes].taxas += (o.valor || 0);
+    });
+
+    const sorted = Object.keys(meses).sort().reverse();
+    const tabsEl = document.getElementById('month-tabs');
+
+    if (!sorted.length) {
+        tabsEl.innerHTML = '';
+        document.getElementById('dre-content').innerHTML = '<p style="color:var(--gray); text-align:center; padding:30px;">Nenhuma operação encontrada.</p>';
+        return;
+    }
+
+    tabsEl.innerHTML = sorted.map((m, i) => {
+        const [y, mo] = m.split('-');
+        const nome = new Date(y, mo - 1).toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+        return `<button class="month-tab ${i === 0 ? 'active' : ''}" onclick="showDREMes('${m}', this)">${nome}</button>`;
+    }).join('');
+
+    showDREMes(sorted[0]);
+}
+
+function showDREMes(mes, btn) {
+    document.querySelectorAll('.month-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    else {
+        const tabs = document.querySelectorAll('.month-tab');
+        if (tabs.length) tabs[0].classList.add('active');
+    }
+
+    const ops = db.ops || [];
+    const m = { receitas: 0, custos: 0, taxas: 0, qtdVendas: 0, qtdCompras: 0, qtdMilhasVendidas: 0, qtdMilhasCompradas: 0 };
+    ops.filter(o => (o.data || '').startsWith(mes)).forEach(o => {
+        if (o.tipo === 'VENDA') { m.receitas += (o.valor || 0); m.qtdVendas++; m.qtdMilhasVendidas += (o.qtd || 0); }
+        else if (o.tipo === 'COMPRA') { m.custos += (o.valor || 0); m.qtdCompras++; m.qtdMilhasCompradas += (o.qtd || 0); }
+        else if (o.tipo === 'TRANSF') m.taxas += (o.valor || 0);
+    });
+
+    const lucro = m.receitas - m.custos - m.taxas;
+    const margem = m.receitas > 0 ? (lucro / m.receitas * 100) : 0;
+    const [y, mo] = mes.split('-');
+    const nomeCompleto = new Date(y, mo - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+    const fmt = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    document.getElementById('dre-content').innerHTML = `
+        <div style="font-size:16px; font-weight:700; color:var(--primary); margin-bottom:18px; text-transform:capitalize;">${nomeCompleto}</div>
+
+        <div class="dre-row">
+            <span>📥 Receita de Vendas <small style="color:var(--gray)">(${m.qtdVendas} vendas · ${Math.floor(m.qtdMilhasVendidas).toLocaleString()} milhas)</small></span>
+            <span class="dre-pos">${fmt(m.receitas)}</span>
+        </div>
+        <div class="dre-row">
+            <span>📤 Custo de Compras <small style="color:var(--gray)">(${m.qtdCompras} compras · ${Math.floor(m.qtdMilhasCompradas).toLocaleString()} milhas)</small></span>
+            <span class="dre-neg">(${fmt(m.custos)})</span>
+        </div>
+        <div class="dre-row">
+            <span>💸 Taxas e Clubes</span>
+            <span class="dre-neg">(${fmt(m.taxas)})</span>
+        </div>
+
+        <div class="dre-row total">
+            <span>💰 Lucro Líquido</span>
+            <span style="color:${lucro >= 0 ? 'var(--success)' : 'var(--danger)'}">${fmt(lucro)}</span>
+        </div>
+
+        <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;">
+            <div style="text-align:center; padding:14px; background:#f8fafc; border-radius:10px;">
+                <div style="font-size:11px; color:var(--gray); text-transform:uppercase;">Margem</div>
+                <div style="font-size:22px; font-weight:700; color:${margem >= 20 ? 'var(--success)' : margem >= 10 ? 'var(--warning)' : 'var(--danger)'}">${margem.toFixed(1)}%</div>
+            </div>
+            <div style="text-align:center; padding:14px; background:#f8fafc; border-radius:10px;">
+                <div style="font-size:11px; color:var(--gray); text-transform:uppercase;">CPM Médio</div>
+                <div style="font-size:22px; font-weight:700; color:var(--primary)">${m.qtdMilhasCompradas > 0 ? 'R$ ' + (m.custos / m.qtdMilhasCompradas * 1000).toFixed(2) : '—'}</div>
+            </div>
+            <div style="text-align:center; padding:14px; background:#f8fafc; border-radius:10px;">
+                <div style="font-size:11px; color:var(--gray); text-transform:uppercase;">CPV Médio</div>
+                <div style="font-size:22px; font-weight:700; color:var(--primary)">${m.qtdMilhasVendidas > 0 ? 'R$ ' + (m.receitas / m.qtdMilhasVendidas * 1000).toFixed(2) : '—'}</div>
+            </div>
+        </div>
+    `;
+}
+
+// ════════════════════════════════════════
+// CARTÕES
+// ════════════════════════════════════════
+function addCartao() {
+    const nome  = document.getElementById('c-nome').value.trim();
+    const fecha = document.getElementById('c-fecha').value;
+    const vence = document.getElementById('c-vence').value;
+
+    if (!nome || !fecha || !vence) {
+        if (!nome) document.getElementById('c-nome').classList.add('invalid');
+        if (!fecha) document.getElementById('c-fecha').classList.add('invalid');
+        if (!vence) document.getElementById('c-vence').classList.add('invalid');
+        toast("Preencha todos os campos do cartão.", "error");
+        return;
+    }
+
+    db.cartoes.push({ id: Date.now(), nome, fecha: parseInt(fecha), vence: parseInt(vence) });
+    salvar(); renderizarTudo();
+    toast(`Cartão "${nome}" adicionado!`, "success");
+
+    document.getElementById('c-nome').value = '';
+    document.getElementById('c-fecha').value = '';
+    document.getElementById('c-vence').value = '';
+    ['c-nome','c-fecha','c-vence'].forEach(id => document.getElementById(id).classList.remove('invalid'));
+}
+
+function updateCartoes() {
+    const tbody = document.getElementById('cartoes-lista-body');
+    tbody.innerHTML = db.cartoes.length ? db.cartoes.map(c => `
+        <tr>
+            <td><b>${c.nome}</b></td>
+            <td>Dia ${c.fecha}</td>
+            <td>Dia ${c.vence}</td>
+            <td>
+                <button class="btn btn-danger" onclick="removerCartao(${c.id}, '${c.nome}')">Remover</button>
+            </td>
+        </tr>`).join('') : '<tr><td colspan="4" style="color:var(--gray); text-align:center; padding:20px;">Nenhum cartão cadastrado</td></tr>';
+}
+
+function removerCartao(id, nome) {
+    confirmar('Remover Cartão', `Deseja remover o cartão <b>${nome}</b>? As parcelas associadas serão mantidas no histórico.`, () => {
+        db.cartoes = db.cartoes.filter(x => x.id !== id);
+        salvar(); renderizarTudo();
+        toast(`Cartão "${nome}" removido.`, "warning");
+    });
+}
+
+// ════════════════════════════════════════
+// SIMULADOR
+// ════════════════════════════════════════
+function calcSim() {
+    const compradas = parseFloat(document.getElementById('sim-qtd').value) || 0;
+    const saldoB   = parseFloat(document.getElementById('sim-saldo-b').value) || 0;
+    const saldoS   = parseFloat(document.getElementById('sim-saldo-s').value) || 0;
+    const bonus    = parseFloat(document.getElementById('sim-pct').value) || 0;
+    const custoCompra = parseFloat(document.getElementById('sim-custo').value) || 0;
+    const taxas    = parseFloat(document.getElementById('sim-taxas').value) || 0;
+    const valorVenda = parseFloat(document.getElementById('sim-venda').value) || 0;
+
+    const milhasFinais = ((compradas + saldoB) * (1 + bonus / 100)) + saldoS;
+    const custoTotal   = custoCompra + taxas;
+    const cpm = milhasFinais > 0 ? (custoTotal / milhasFinais * 1000) : 0;
+    const cpv = milhasFinais > 0 ? (valorVenda / milhasFinais * 1000) : 0;
+    const lucro = valorVenda - custoTotal;
+    const roi   = custoTotal > 0 ? (lucro / custoTotal) * 100 : 0;
+
+    let roiText = '', roiColor = '';
+    if (roi < 10)       { roiText = '❌ Evitar (< 10%)'; roiColor = 'var(--danger)'; }
+    else if (roi < 20)  { roiText = '⚠ Só se giro rápido (10–19%)'; roiColor = 'var(--warning)'; }
+    else if (roi < 30)  { roiText = '✔ Bom / Aceitável (20–29%)'; roiColor = 'var(--success)'; }
+    else if (roi <= 50) { roiText = '✔✔ Excelente (30–50%)'; roiColor = 'var(--success)'; }
+    else                { roiText = '🚀 Prioridade Absoluta (> 50%)'; roiColor = 'var(--accent)'; }
+
+    document.getElementById('sim-res').innerHTML = `
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:14px;">
+            <div>
+                <div style="font-size:11px; color:var(--gray); text-transform:uppercase; margin-bottom:2px;">Milhas Geradas</div>
+                <div style="font-size:20px; font-weight:700;">${Math.floor(milhasFinais).toLocaleString('pt-BR')}</div>
+            </div>
+            <div>
+                <div style="font-size:11px; color:var(--gray); text-transform:uppercase; margin-bottom:2px;">Lucro Líquido</div>
+                <div style="font-size:20px; font-weight:700; color:${lucro>=0?'var(--success)':'var(--danger)'}">
+                    R$ ${lucro.toFixed(2)}
+                </div>
+            </div>
+            <div>
+                <div style="font-size:11px; color:var(--gray); text-transform:uppercase; margin-bottom:2px;">CPM Compra</div>
+                <div style="font-size:18px; font-weight:600;">R$ ${cpm.toFixed(2)}</div>
+            </div>
+            <div>
+                <div style="font-size:11px; color:var(--gray); text-transform:uppercase; margin-bottom:2px;">CPV Venda</div>
+                <div style="font-size:18px; font-weight:600;">R$ ${cpv.toFixed(2)}</div>
+            </div>
+        </div>
+        <div style="text-align:center; padding:12px; background:white; border-radius:10px; border:1px solid var(--border);">
+            <div style="font-size:11px; color:var(--gray); text-transform:uppercase;">ROI da Operação</div>
+            <div style="font-size:22px; font-weight:700; color:${roiColor};">${roi.toFixed(2)}% — ${roiText}</div>
+        </div>
+    `;
+}
+
+// ════════════════════════════════════════
+// EXPORTAR CSV
+// ════════════════════════════════════════
+function exportarCSV() {
+    const ops = db.ops || [];
+    if (!ops.length) { toast("Nenhuma operação para exportar.", "warning"); return; }
+
+    const header = 'Data,Programa,Tipo,Qtd Milhas,Valor (R$),Status,Data Recebimento,Cartao';
+    const rows = [...ops].sort((a, b) => (a.data || '').localeCompare(b.data || '')).map(o =>
+        `"${o.data || ''}","${o.item || ''}","${o.tipo || ''}","${Math.floor(o.qtd || 0)}","${(o.valor || 0).toFixed(2)}","${o.status || ''}","${o.dataRec || ''}","${o.cartao || ''}"`
+    );
+
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `milhas-pro-${new Date().toISOString().substring(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("CSV exportado com sucesso!", "success");
+}
+
+// ════════════════════════════════════════
+// CALCULADORA C6
+// ════════════════════════════════════════
+async function buscarDolar() {
+    const el = document.getElementById('c6-d');
+    const btn = document.getElementById('c6-dolar-btn');
+    if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+    try {
+        const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+        const data = await r.json();
+        const cotacao = parseFloat(data.USDBRL.bid).toFixed(2);
+        el.value = cotacao;
+        if (btn) { btn.textContent = `✓ R$ ${cotacao}`; btn.style.color = 'var(--success)'; }
+        calcC6();
+        toast(`Dólar atualizado: R$ ${cotacao}`, 'success');
+    } catch(e) {
+        if (btn) { btn.textContent = '⚠ Erro'; btn.style.color = 'var(--danger)'; }
+        toast('Não foi possível buscar a cotação. Verifique sua conexão.', 'error');
+    } finally {
+        setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Atualizar'; btn.style.color = ''; } }, 3000);
+    }
+}
+
+function calcC6() {
+    const r = parseFloat(document.getElementById('c6-r').value) || 0;
+    const d = parseFloat(document.getElementById('c6-d').value) || 1;
+    document.getElementById('c6-res').textContent = Math.floor((r / d) * 2.5).toLocaleString();
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+// Foco no input de senha ao carregar
+document.getElementById('lock-input').focus();
+</script>
 </body>
 </html>
-
-
-
